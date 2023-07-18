@@ -5,6 +5,7 @@
 #include <string>
 #include <sstream>
 #include <unordered_map>
+#include <unordered_set>
 
 // 表示http信息处理状态
 enum MSGSTATUS{
@@ -41,6 +42,13 @@ public:
         lineStream >> Method;
         lineStream >> Resource;
         lineStream >> Version;
+
+        if(Resource == "/")
+            Resource = "/index.html";
+        else{
+            if(DEFAULT_HTML.count(Resource))
+                Resource += ".html";
+        }
     }
 
     void addHeaderOpt(const std::string &Line){
@@ -73,6 +81,7 @@ public:
     long long ContentLength;
     long long MsgBodyRecvLen;
 
+    static const std::unordered_set<std::string> DEFAULT_HTML;
 };
 
 class Response : public Message{
@@ -97,4 +106,6 @@ public:
     int FileMsgFd;
 
     unsigned long long HasSendLen;
+
+    static const std::unordered_map<std::string, std::string> SUFFIX_TYPE;
 };

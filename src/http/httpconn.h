@@ -8,6 +8,7 @@
 
 #include "httprequest.h"
 #include "httpresponse.h"
+#include "../single/threadpool.h"
 
 class HttpConn{
 public:
@@ -23,6 +24,8 @@ public:
 
     void Send();
     
+    std::string GetFileType();
+
     int GetFd() const;
 
     static std::atomic<int> userCount;

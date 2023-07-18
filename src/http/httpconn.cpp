@@ -44,10 +44,6 @@ bool HttpConn::parse(){
     endIndex = request_.RecvMsg.find("\r\n");
     request_.setRequestLine(request_.RecvMsg.substr(0, endIndex + 2));
     request_.RecvMsg.erase(0, endIndex + 2);
-
-    if(request_.Resource == "/favicon.ico"){
-        return false;
-    }
     
     // 首部
     while(1){
@@ -58,14 +54,17 @@ bool HttpConn::parse(){
             break;
     }
     std::cout << "解析完成，请求资源:" << request_.Resource << std::endl;
+
+    return true;
 }
 
 void HttpConn::process(){
     // 状态行
-    response_.beforeBodyMsg.append("HTTP/1.1 200 OK\r\n");
+    response_.beforeBodyMsg = "HTTP/1.1 200 OK\r\n";
 
     // body
-    std::ifstream fileStream("/root/webFileServer/resources/index.html", std::ios::in);
+    std::ifstream fileStream("../resources/" + request_.Resource, std::ios::in);
+    response_.MsgBody = "";
     std::string TempLine;
     while(getline(fileStream, TempLine)){
         response_.MsgBody += TempLine + "\n";
@@ -75,8 +74,8 @@ void HttpConn::process(){
     // 头部
     if(response_.MsgBody != "")
         response_.beforeBodyMsg += "Content-Length: " + std::to_string(response_.MsgBodyLen) + "\r\n";
-    response_.beforeBodyMsg += "Content-Type: text/html;charset=UTF-8\r\n";
-    response_.beforeBodyMsg += "Connection: keep-alive\r\n";
+    response_.beforeBodyMsg += "Content-Type: " + GetFileType() + "\r\n";
+    response_.beforeBodyMsg += "Connection: close\r\n";
     response_.beforeBodyMsg += "\r\n";
     response_.beforeBodyMsgLen = response_.beforeBodyMsg.size();
 
@@ -127,6 +126,15 @@ void HttpConn::Send(){
 
 }
 
+std::string HttpConn::GetFileType(){
+    std::string::size_type idx = request_.Resource.find_last_of('.');
+    if(idx == std::string::npos)
+        return "text/plain";
+    std::string suffix = request_.Resource.substr(idx);
+    if(response_.SUFFIX_TYPE.count(suffix))
+        return response_.SUFFIX_TYPE.find(suffix)->second;
+    return "text/plain";
+}
 
 
 

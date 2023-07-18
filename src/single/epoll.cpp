@@ -1,9 +1,5 @@
 #include "epoll.h"
 
-Epoll& globalEpoll(){
-    static Epoll globalEpoll(512);
-    return globalEpoll;
-}
 
 Epoll::Epoll(int maxEvent) : epfd_(epoll_create(maxEvent)) {}
 

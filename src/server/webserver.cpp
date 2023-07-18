@@ -78,9 +78,15 @@ void WebServer::dealNew_(){
     users_[fd].Init(fd, addr);
 }
 
+// 分发工作
 void WebServer::dealRead_(HttpConn *client){
-    // threadpool
+    globalThreadPool().AddTask(std::bind(&WebServer::OnRead_, this, client));
+}
+void WebServer::dealWrite_(HttpConn *client){
+    globalThreadPool().AddTask(std::bind(&WebServer::OnWrite_, this, client));
+}
 
+void WebServer::OnRead_(HttpConn *client){
     // 读取
     client->Read();
 
@@ -92,10 +98,11 @@ void WebServer::dealRead_(HttpConn *client){
     client->process();
     globalEpoll().modFd(client->GetFd(), connEvent_ | EPOLLOUT);
 }
-
-void WebServer::dealWrite_(HttpConn *client){
+void WebServer::OnWrite_(HttpConn *client){
     // 发送
     client->Send();
-    globalEpoll().modFd(client->GetFd(), connEvent_ | EPOLLIN);
+    // globalEpoll().modFd(client->GetFd(), connEvent_ | EPOLLIN);
+    globalEpoll().delFd(client->GetFd());
+    close(client->GetFd());
     printf("发送完成！\n");
 }
