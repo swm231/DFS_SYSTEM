@@ -77,6 +77,10 @@ void WebServer::dealNew_(){
     setNonBlocking(fd);
     users_[fd].Init(fd, addr);
 }
+void WebServer::closeConn_(HttpConn *client){
+    globalEpoll().delFd(client->GetFd());
+    client->Close();
+}
 
 // 分发工作
 void WebServer::dealRead_(HttpConn *client){
@@ -86,23 +90,40 @@ void WebServer::dealWrite_(HttpConn *client){
     globalThreadPool().AddTask(std::bind(&WebServer::OnWrite_, this, client));
 }
 
+
 void WebServer::OnRead_(HttpConn *client){
-    // 读取
-    client->Read();
-
-    // 解析
-    if(client->parse() == false)
+    int ret = -1;
+    ret = client->Read();
+    if(ret < 0){
+        closeConn_(client);
         return;
-
-    // 准备发送
-    client->process();
-    globalEpoll().modFd(client->GetFd(), connEvent_ | EPOLLOUT);
+    }
+    OnProcess_(client);
 }
+
+void WebServer::OnProcess_(HttpConn *client){
+    if(client->process())
+        globalEpoll().modFd(client->GetFd(), connEvent_ | EPOLLOUT);
+    else
+        globalEpoll().modFd(client->GetFd(), connEvent_ | EPOLLIN);
+}
+
 void WebServer::OnWrite_(HttpConn *client){
     // 发送
-    client->Send();
-    // globalEpoll().modFd(client->GetFd(), connEvent_ | EPOLLIN);
-    globalEpoll().delFd(client->GetFd());
-    close(client->GetFd());
+    int ret = -1, writeErrno = 0;
+    ret = client->Send(&writeErrno);
+    if(client->GetSendStatus() == HANDLE_COMPLATE){
+        if(client->IsKeepAlive()){
+            OnProcess_(client);
+            return;
+        }
+    }
+    else if(ret < 0){
+        if(writeErrno == EAGAIN){
+            globalEpoll().modFd(client->GetFd(), connEvent_ | EPOLLOUT);
+            return;
+        }
+    }
+    closeConn_(client);
     printf("发送完成！\n");
 }

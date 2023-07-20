@@ -108,4 +108,5 @@ public:
     unsigned long long HasSendLen;
 
     static const std::unordered_map<std::string, std::string> SUFFIX_TYPE;
+    static const std::unordered_map<int, std::string> CODE_STATUS, CODE_PATH;
 };

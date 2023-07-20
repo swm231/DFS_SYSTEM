@@ -19,13 +19,17 @@ public:
     void startUp();
 
 
+
 private:
     void dealNew_();
     void dealRead_(HttpConn *client);
     void dealWrite_(HttpConn *client);
 
+    void closeConn_(HttpConn *client);
+
     void OnRead_(HttpConn *client);
     void OnWrite_(HttpConn *client);
+    void OnProcess_(HttpConn *client);
 
     uint32_t listenEvent_;
     uint32_t connEvent_;

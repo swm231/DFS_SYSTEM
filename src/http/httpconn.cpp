@@ -2,7 +2,7 @@
 extern Epoll& globalEpoll();
 
 std::atomic<int> HttpConn::userCount;
-std::string HttpConn::srcDir_;
+std::string HttpConn::srcDir_ = "/../resources";
 
 HttpConn::HttpConn() : fd_(-1), addr_({0}), isClose_(true){}
 HttpConn::~HttpConn(){
@@ -24,71 +24,36 @@ void HttpConn::Close(){
     }
 }
 
-void HttpConn::Read(){
+int HttpConn::Read(){
+    int len = -1;
     char temp[2048];
-    while(true){
-        int len = recv(fd_, temp, 2028, 0);
-        if(len <= 0) break;
+    // while(true){
+        len = recv(fd_, temp, 2048, 0);
+        printf("%d\n", len);
+        // if(len <= 0) break;
         request_.Append(temp, len);
-    }
+    // }
     printf("读取完成！\n");
+    return len;
 }
 
-bool HttpConn::parse(){
-    std::cout << "开始解析" << std::endl;
-    std::cout << request_.RecvMsg << std::endl;
-
-    std::string::size_type endIndex;
-
-    // 请求行
-    endIndex = request_.RecvMsg.find("\r\n");
-    request_.setRequestLine(request_.RecvMsg.substr(0, endIndex + 2));
-    request_.RecvMsg.erase(0, endIndex + 2);
-    
-    // 首部
-    while(1){
-        endIndex = request_.RecvMsg.find("\r\n");
-        std::string curLine = request_.RecvMsg.substr(0, endIndex + 2);
-        request_.RecvMsg.erase(0, endIndex + 2);
-        if(curLine == "\r\n")
-            break;
+bool HttpConn::process(){
+    request_.Init();
+    if(request_.RecvMsg.size() <= 0) return false;
+    else if(request_.parse()){
+        response_.Init(srcDir_, request_.Resource, request_.IsKeepAlice(), 200);
     }
-    std::cout << "解析完成，请求资源:" << request_.Resource << std::endl;
+    else
+        response_.Init(srcDir_, request_.Resource, false, 400);
+    
+    response_.MaskeResponse();
 
     return true;
 }
 
-void HttpConn::process(){
-    // 状态行
-    response_.beforeBodyMsg = "HTTP/1.1 200 OK\r\n";
-
-    // body
-    std::ifstream fileStream("../resources/" + request_.Resource, std::ios::in);
-    response_.MsgBody = "";
-    std::string TempLine;
-    while(getline(fileStream, TempLine)){
-        response_.MsgBody += TempLine + "\n";
-    }
-    response_.MsgBodyLen = response_.MsgBody.size();
-
-    // 头部
-    if(response_.MsgBody != "")
-        response_.beforeBodyMsg += "Content-Length: " + std::to_string(response_.MsgBodyLen) + "\r\n";
-    response_.beforeBodyMsg += "Content-Type: " + GetFileType() + "\r\n";
-    response_.beforeBodyMsg += "Connection: close\r\n";
-    response_.beforeBodyMsg += "\r\n";
-    response_.beforeBodyMsgLen = response_.beforeBodyMsg.size();
-
-    response_.Status = HANDLE_HEAD;
-
-    printf("数据准备完成！\n");
-    std::cout << response_.beforeBodyMsg;
-    std::cout << response_.MsgBody;
-}
-
-void HttpConn::Send(){
+int HttpConn::Send(int *writeErrno){
     if(response_.Status == HANDLE_COMPLATE)
-        return;
+        return -1;
     while(1){
         unsigned long long sentLen = 0;
         
@@ -98,6 +63,7 @@ void HttpConn::Send(){
             sentLen = send(fd_, response_.beforeBodyMsg.c_str() + sentLen, response_.beforeBodyMsgLen - sentLen, 0);
             if(sentLen == -1){
                 // 如果不是缓冲区满了，就是出错了
+                *writeErrno = errno;
                 break;
             }
             response_.HasSendLen += sentLen;
@@ -113,6 +79,7 @@ void HttpConn::Send(){
             sentLen = send(fd_, response_.MsgBody.c_str() + sentLen, response_.MsgBodyLen - sentLen, 0);
             if(sentLen == -1){
                 // 如果不是缓冲区满了，就是出错了
+                *writeErrno = errno;
                 break;
             }
             response_.HasSendLen += sentLen;
@@ -125,19 +92,6 @@ void HttpConn::Send(){
     }
 
 }
-
-std::string HttpConn::GetFileType(){
-    std::string::size_type idx = request_.Resource.find_last_of('.');
-    if(idx == std::string::npos)
-        return "text/plain";
-    std::string suffix = request_.Resource.substr(idx);
-    if(response_.SUFFIX_TYPE.count(suffix))
-        return response_.SUFFIX_TYPE.find(suffix)->second;
-    return "text/plain";
-}
-
-
-
 
 int HttpConn::GetFd() const{
     return fd_;

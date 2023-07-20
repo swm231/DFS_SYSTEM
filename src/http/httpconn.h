@@ -18,15 +18,25 @@ public:
     void Init(int fd, const sockaddr_in &addr);
     void Close();
     
-    void Read();
-    bool parse();
-    void process();
+    int Read();
+    int Write();
 
-    void Send();
+    bool parse();
+    bool process();
+
+    void dealRead();
+
+    int Send(int *writeErrno);
     
     std::string GetFileType();
 
     int GetFd() const;
+    MSGSTATUS GetSendStatus(){
+        return response_.Status;
+    }
+    bool IsKeepAlive(){
+        return request_.IsKeepAlice();
+    }
 
     static std::atomic<int> userCount;
     static std::string srcDir_;
