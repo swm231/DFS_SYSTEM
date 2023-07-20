@@ -32,7 +32,7 @@ public:
 
     int GetFd() const;
     MSGSTATUS GetSendStatus(){
-        return response_.Status;
+        return response_.HeadStatus;
     }
     bool IsKeepAlive(){
         return request_.IsKeepAlice();

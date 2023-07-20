@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>个人文件管理系统</title>
+    <link rel="stylesheet" href="css/head.css">
+
+    <meta http-equiv="content-type" content="text/html;charset=utf-8">
+
+    <script type="text/javascript">
+        function confirmDelete() {
+            return confirm('确认删除该文件吗？');
+        }
+
+        function uploadWin(){
+            var vDiv = document.getElementById('div1');
+            vDiv.style.display = 'block';
+            vDiv.style.zIndex = 10;
+            vDiv.style.position = "absolute";
+
+            var vDiv2 = document.getElementById('div2');
+            vDiv2.style.display = 'block';
+            vDiv2.style.zIndex = 11;
+            vDiv2.style.position = "fixed";
+            vDiv2.style.top = "20%";
+            vDiv2.style.left = "50%";
+            vDiv2.style.marginLeft = "-111px";
+            vDiv2.style.marginTop = "-20px";
+        }
+    </script>
+
+</head>
+<body>
+
+<div class="header" style="text-align: right">
+    <li><a class="navigation" href="/">首页</a></li>
+    <li><a class="navigation" href="/public">公共空间</a></li>
+    <li><a class="navigation" href="/login">登录</a></li>
+    <li><a class="navigation" href="/register">注册</a></li>
+</div>
+
+
+<div style="text-align: center">
+    <br>
+    <div style="width:300px; text-align: left; margin: auto;">选择文件上传：</div>
+    <br/>
+    <form id="uploadfile" action="upload"  method="post" enctype="multipart/form-data" style="text-align: center;">
+            <input type="file" id="upload" name="upload" style = "border:1px solid;" />
+            <input type="submit" onclick="uploadWin()" value="上传" />
+    </form>
+</div>
+
+<div style="text-align: center">
+    <br>
+        <div style="width:300px; text-align: left; margin: auto;">文件列表：</div>
+    <br/>
+    <table border="1px" style="width:600px;text-align: center; margin: auto;table-layout:fixed;">
+        <thead>
+            <td style="text-align: center;">文件名</td> <td class="col2"></td> <td class="col3"></td>
+        </thead>
+<!-- FileList -->
+    </table>
+
+</div>
+
+</body>
+</html>

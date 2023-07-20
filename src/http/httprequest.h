@@ -14,7 +14,7 @@ public:
 
     bool IsKeepAlice() const;
 
-    bool parse();
+    int parse();
 
     void Append(const char *str, size_t len);
 

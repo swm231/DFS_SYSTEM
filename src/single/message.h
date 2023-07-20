@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <sstream>
+#include <fstream>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -25,10 +26,11 @@ enum MSGBODYTYPE{
 
 class Message{
 public:
-    Message() : Status(HANDLE_INIT){}
+    Message() : HeadStatus(HANDLE_INIT){}
 
 public:
-    MSGSTATUS Status;
+    MSGSTATUS HeadStatus;
+    MSGBODYTYPE BodySatus;
 
     std::unordered_map<std::string, std::string> MsgHeader;
 };
@@ -66,8 +68,19 @@ public:
 
         if(key == "Content-Length")
             ContentLength = std::stoll(value);
-        
-        MsgHeader[key] = value;
+        else if(key == "Content-Type"){
+            std::string::size_type semIdx = value.find(";");
+            if(semIdx != std::string::npos){
+                MsgHeader[key] = value.substr(0, semIdx);
+                std::string::size_type eqIdx = value.find("=", semIdx);
+                key = value.substr(semIdx + 2, eqIdx - semIdx - 2);
+                MsgHeader[key] = value.substr(eqIdx + 1);
+            }
+            else
+                MsgHeader[key] = value;
+        }
+        else
+            MsgHeader[key] = value;
     }
 
 public:
@@ -80,6 +93,8 @@ public:
 
     long long ContentLength;
     long long MsgBodyRecvLen;
+
+    std::string recvFileName;
 
     static const std::unordered_set<std::string> DEFAULT_HTML;
 };

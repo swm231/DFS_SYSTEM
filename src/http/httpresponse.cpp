@@ -24,6 +24,7 @@ const std::unordered_map<std::string, std::string> Response::SUFFIX_TYPE = {
 
 const std::unordered_map<int, std::string> Response::CODE_STATUS = {
     { 200, "Ok"},
+    { 302, "Found"},
     { 400, "Bad Request" },
     { 403, "Forbidden" },
     { 404, "Not Found" },
@@ -35,7 +36,7 @@ const std::unordered_map<int, std::string> Response::CODE_PATH = {
     { 404, "/404.html" },
 };
 
-HttpResponse::HttpResponse() : code_(-1), path_(""), resource_(""), isKeepAlive_(false){}
+HttpResponse::HttpResponse() : code_(-1), path_(""), resource_(""), resPath_(""), isKeepAlive_(false){}
 
 HttpResponse::~HttpResponse(){
 
@@ -87,11 +88,15 @@ void HttpResponse::AddHeader_(){
 }
 void HttpResponse::AddContent_(){
     // body
-    std::ifstream fileStream(path_ + resource_, std::ios::in);
     MsgBody = "";
-    std::string TempLine;
-    while(getline(fileStream, TempLine)){
-        MsgBody += TempLine + "\n";
+    if(resource_ == "/public.html")
+        GetFileListPage_();
+    else{
+        std::ifstream fileStream(path_ + resource_, std::ios::in);
+        std::string TempLine;
+        while(getline(fileStream, TempLine)){
+            MsgBody += TempLine + "\n";
+        }
     }
     MsgBodyLen = MsgBody.size();
 
@@ -99,7 +104,7 @@ void HttpResponse::AddContent_(){
     if(MsgBody != "")
         beforeBodyMsg += "Content-length: " + std::to_string(MsgBody.size()) + "\r\n\r\n";
     beforeBodyMsgLen = beforeBodyMsg.size();
-    Status = HANDLE_HEAD;
+    HeadStatus = HANDLE_HEAD;
 
     printf("数据准备完成！\n");
     std::cout << beforeBodyMsg;
@@ -114,4 +119,48 @@ std::string HttpResponse::GetFileType_(){
     if(SUFFIX_TYPE.count(suffix))
         return SUFFIX_TYPE.find(suffix)->second;
     return "text/plain";
+}
+
+void HttpResponse::GetFileListPage_(){
+    std::vector<std::string> fileVec;
+    GetFileVec_(resPath_ == "" ? "../user_resources/public" : resPath_, fileVec);
+    
+    std::ifstream fileListStream((std::string("../resources/") + "public.html").c_str(), std::ios::in);
+    std::string tempLine;
+
+
+    while(true){
+        getline(fileListStream, tempLine);
+        if(tempLine == "<!-- FileList -->")
+            break;
+        MsgBody += tempLine + "\n";
+    }
+
+    for(auto &filename : fileVec){
+        MsgBody += "            <tr><td class=\"col1\">" + filename +
+                    "</td> <td class=\"col2\"><a href=\"download/" + filename +
+                    "\">下载</a></td> <td class=\"col3\"><a href=\"delete/" + filename +
+                    "\" onclick=\"return confirmDelete();\">删除</a></td></tr>" + "\n";
+    }
+
+    while(getline(fileListStream, tempLine))
+        MsgBody += tempLine + "\n";
+}
+
+void HttpResponse::GetFileVec_(const std::string &path, std::vector<std::string> &fileList){
+    DIR *dir;
+    dir = opendir(path.c_str());
+    struct dirent *stdinfo;
+    while (1)
+    {
+        // 获取文件夹中的一个文件
+        stdinfo = readdir(dir);
+        if (stdinfo == nullptr){
+            break;
+        }
+        fileList.push_back(stdinfo->d_name);
+        if(fileList.back() == "." || fileList.back() == ".."){
+            fileList.pop_back();
+        }
+    }
 }
