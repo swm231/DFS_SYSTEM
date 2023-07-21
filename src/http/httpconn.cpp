@@ -14,6 +14,7 @@ void HttpConn::Init(int fd, const sockaddr_in &addr){
     addr_ = addr;
     fd_ = fd;
     isClose_ = false;
+    request_.Init(fd);
 }
 
 void HttpConn::Close(){
@@ -24,39 +25,28 @@ void HttpConn::Close(){
     }
 }
 
-int HttpConn::Read(){
-    int len = -1;
-    char temp[20480];
-    // while(true){
-        len = recv(fd_, temp, 20480, 0);
-        printf("%d\n", len);
-        // if(len <= 0) break;
-        request_.Append(temp, len);
-    // }
-    printf("读取完成！\n");
-    return len;
-}
 
-bool HttpConn::process(){
-    request_.Init();
-    if(request_.RecvMsg.size() <= 0) return false;
-    else{
-        int ret = request_.parse();
-        if(ret == 0){
-            response_.Init(srcDir_, request_.Resource, request_.IsKeepAlice(), 200);
-        }
-        else if(ret == 2){
-            response_.Init(srcDir_, "/public.html", request_.IsKeepAlice(), 302);
-            // response_.Init(srcDir_, "public.html", request_.IsKeepAlice(), 302);
-        }
-        else
-            response_.Init(srcDir_, request_.Resource, false, 400);
+// 0:解析正确 1:继续监听 2:关闭连接 3:重定向 else:文件未找到
+int HttpConn::process(){
+    int ret = request_.parse();
+    printf("解析完成:%d\n", ret);
+
+    if(ret == 0){
+        response_.Init(srcDir_, request_.Resource, request_.IsKeepAlice(), 200);
     }
-    
+    else if(ret == 1 || ret == 2)
+        return ret;
+    else if(ret == 3){
+        response_.Init(srcDir_, "/public.html", request_.IsKeepAlice(), 302);
+    }
+    else
+        response_.Init(srcDir_, request_.Resource, false, 400);
+
+    request_.Init(fd_);
     request_.RecvMsg = "";
     response_.MaskeResponse();
 
-    return true;
+    return ret;
 }
 
 int HttpConn::Send(int *writeErrno){

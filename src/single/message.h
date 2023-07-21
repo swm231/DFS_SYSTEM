@@ -24,9 +24,17 @@ enum MSGBODYTYPE{
     EMPTY_TYPE,
 };
 
+// 表示文件处理过程
+enum FILEMSGESTATUS{
+    FILE_BEGIN,
+    FILE_HEAD,
+    FILE_CONTENT,
+    FILE_COMPLATE
+};
+
 class Message{
 public:
-    Message() : HeadStatus(HANDLE_INIT){}
+    Message() : HeadStatus(HANDLE_INIT), BodySatus(EMPTY_TYPE){}
 
 public:
     MSGSTATUS HeadStatus;
@@ -96,6 +104,7 @@ public:
 
     std::string recvFileName;
 
+    FILEMSGESTATUS FileStatus;
     static const std::unordered_set<std::string> DEFAULT_HTML;
 };
 

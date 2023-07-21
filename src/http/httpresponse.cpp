@@ -107,8 +107,6 @@ void HttpResponse::AddContent_(){
     HeadStatus = HANDLE_HEAD;
 
     printf("数据准备完成！\n");
-    std::cout << beforeBodyMsg;
-    std::cout << MsgBody;
 }
 
 std::string HttpResponse::GetFileType_(){
@@ -137,9 +135,9 @@ void HttpResponse::GetFileListPage_(){
     }
 
     for(auto &filename : fileVec){
-        MsgBody += "            <tr><td class=\"col1\">" + filename +
-                    "</td> <td class=\"col2\"><a href=\"download/" + filename +
-                    "\">下载</a></td> <td class=\"col3\"><a href=\"delete/" + filename +
+        MsgBody += "            <tr><td>" + filename +
+                    "</td> <td><a href=\"download/" + filename +
+                    "\">下载</a></td> <td><a href=\"delete/" + filename +
                     "\" onclick=\"return confirmDelete();\">删除</a></td></tr>" + "\n";
     }
 

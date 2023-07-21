@@ -2,6 +2,7 @@
 
 #include <sys/stat.h>
 #include <errno.h>
+#include <arpa/inet.h>
 
 #include "../single/message.h"
 
@@ -10,7 +11,7 @@ public:
     HttpRequest() : Request() {}
     ~HttpRequest() = default;
 
-    void Init();
+    void Init(int fd);
 
     bool IsKeepAlice() const;
 
@@ -20,6 +21,8 @@ public:
 
 
 private:
+    int fd_;
+
     int code_;
     bool isKeepAlive_;
 

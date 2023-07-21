@@ -1,7 +1,7 @@
 #include "webserver.h"
 
 WebServer::WebServer(int port){
-    HttpConn::srcDir_ = "../resources";
+    HttpConn::srcDir_ = "../resources/";
 
     listenEvent_ = EPOLLRDHUP | EPOLLET;
     connEvent_ = EPOLLONESHOT | EPOLLRDHUP | EPOLLET;
@@ -92,20 +92,18 @@ void WebServer::dealWrite_(HttpConn *client){
 
 
 void WebServer::OnRead_(HttpConn *client){
-    int ret = -1;
-    ret = client->Read();
-    if(ret < 0){
-        closeConn_(client);
-        return;
-    }
     OnProcess_(client);
 }
 
+// 0:解析正确 1:继续监听 2:关闭连接 3:重定向 else:文件未找到
 void WebServer::OnProcess_(HttpConn *client){
-    if(client->process())
-        globalEpoll().modFd(client->GetFd(), connEvent_ | EPOLLOUT);
-    else
+    int ret = client->process();
+    if(ret == 1)
         globalEpoll().modFd(client->GetFd(), connEvent_ | EPOLLIN);
+    else if(ret == 2)
+        closeConn_(client);
+    else 
+        globalEpoll().modFd(client->GetFd(), connEvent_ | EPOLLOUT);
 }
 
 void WebServer::OnWrite_(HttpConn *client){

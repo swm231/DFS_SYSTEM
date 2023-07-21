@@ -1,6 +1,5 @@
 #pragma once
 
-#include <arpa/inet.h>
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <atomic>
@@ -22,7 +21,7 @@ public:
     int Write();
 
     bool parse();
-    bool process();
+    int process();
 
     void dealRead();
 
