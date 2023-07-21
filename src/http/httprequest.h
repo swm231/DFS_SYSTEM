@@ -15,14 +15,12 @@ public:
 
     bool IsKeepAlice() const;
 
-    int parse();
+    int process();
 
     void Append(const char *str, size_t len);
 
 
 private:
-    int fd_;
-
     int code_;
     bool isKeepAlive_;
 

@@ -19,8 +19,8 @@ enum MSGSTATUS{
 
 // 表示消息体类型
 enum MSGBODYTYPE{
-    FIILE_TYPE,
-    HTML_TYPE,
+    FILE_TYPE,
+    TEXT_TYPE,
     EMPTY_TYPE,
 };
 
@@ -37,6 +37,8 @@ public:
     Message() : HeadStatus(HANDLE_INIT), BodySatus(EMPTY_TYPE){}
 
 public:
+    int fd_;
+
     MSGSTATUS HeadStatus;
     MSGBODYTYPE BodySatus;
 
@@ -110,7 +112,7 @@ public:
 
 class Response : public Message{
 public:
-    Response() : Message(), HasSendLen(0){}
+    Response() : Message(), HasSentLen(0){}
 
 public:
     // 状态行
@@ -118,7 +120,6 @@ public:
     std::string StatusCode;
     std::string StatusDes;
 
-    MSGBODYTYPE bodyType;
     std::string bodyFileName;
 
     std::string beforeBodyMsg;
@@ -129,7 +130,7 @@ public:
 
     int FileMsgFd;
 
-    unsigned long long HasSendLen;
+    unsigned long long HasSentLen;
 
     static const std::unordered_map<std::string, std::string> SUFFIX_TYPE;
     static const std::unordered_map<int, std::string> CODE_STATUS, CODE_PATH;

@@ -15,6 +15,7 @@ void HttpConn::Init(int fd, const sockaddr_in &addr){
     fd_ = fd;
     isClose_ = false;
     request_.Init(fd);
+    response_.fd_ = fd;
 }
 
 void HttpConn::Close(){
@@ -25,11 +26,11 @@ void HttpConn::Close(){
     }
 }
 
-
 // 0:解析正确 1:继续监听 2:关闭连接 3:重定向 else:文件未找到
-int HttpConn::process(){
-    int ret = request_.parse();
+int HttpConn::read_process(){
+    int ret = request_.process();
     printf("解析完成:%d\n", ret);
+    std::cout << "请求资源:" << request_.Resource << std::endl;
 
     if(ret == 0){
         response_.Init(srcDir_, request_.Resource, request_.IsKeepAlice(), 200);
@@ -44,51 +45,13 @@ int HttpConn::process(){
 
     request_.Init(fd_);
     request_.RecvMsg = "";
-    response_.MaskeResponse();
 
     return ret;
 }
 
-int HttpConn::Send(int *writeErrno){
-    if(response_.HeadStatus == HANDLE_COMPLATE)
-        return -1;
-    while(1){
-        unsigned long long sentLen = 0;
-        
-        // 头部
-        if(response_.HeadStatus == HANDLE_HEAD){
-            sentLen = response_.HasSendLen;
-            sentLen = send(fd_, response_.beforeBodyMsg.c_str() + sentLen, response_.beforeBodyMsgLen - sentLen, 0);
-            if(sentLen == -1){
-                // 如果不是缓冲区满了，就是出错了
-                *writeErrno = errno;
-                break;
-            }
-            response_.HasSendLen += sentLen;
-            if(response_.HasSendLen >= response_.beforeBodyMsgLen){
-                response_.HeadStatus = HANDLE_BODY;
-                response_.HasSendLen = 0;
-            }
-        }
-
-        // 消息体
-        if(response_.HeadStatus == HANDLE_BODY){
-            sentLen = response_.HasSendLen;
-            sentLen = send(fd_, response_.MsgBody.c_str() + sentLen, response_.MsgBodyLen - sentLen, 0);
-            if(sentLen == -1){
-                // 如果不是缓冲区满了，就是出错了
-                *writeErrno = errno;
-                break;
-            }
-            response_.HasSendLen += sentLen;
-            if(response_.HasSendLen >= response_.MsgBodyLen){
-                response_.HeadStatus = HANDLE_COMPLATE;
-                response_.HasSendLen = 0;
-                break;
-            }
-        }
-    }
-
+// 0:发送完成 1:继续发送 2:关闭连接
+int HttpConn::write_process(){
+    return response_.process();
 }
 
 int HttpConn::GetFd() const{

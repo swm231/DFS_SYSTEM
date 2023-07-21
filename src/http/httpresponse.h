@@ -5,6 +5,8 @@
 #include <fstream>
 #include <vector>
 #include <sys/stat.h>
+#include <netinet/in.h>
+#include <sys/sendfile.h>
 
 #include "../single/message.h"
 #include "../single/epoll.h"
@@ -14,9 +16,12 @@ public:
     HttpResponse();
     ~HttpResponse();
     void Init(std::string path_, std::string rescouce, bool isKeepAlice, int code);
-    void MaskeResponse();
+
+    int process();
 
 private:
+    void Parse_();
+
     void FindHtml_();
     void AddStateLine_();
     void AddHeader_();
@@ -34,6 +39,6 @@ private:
     std::string resPath_;
 
     struct stat fileSata_;
-    
+    int fileMsgFd;
 
 };

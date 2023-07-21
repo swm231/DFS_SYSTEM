@@ -14,7 +14,7 @@ void HttpRequest::Init(int fd){
 }
 
 // 0:解析正确 1:继续监听 2:关闭连接 3:重定向 else:文件未找到
-int HttpRequest::parse(){
+int HttpRequest::process(){
     std::cout << "开始解析" << std::endl;
     char buff[4096];
     while(true){

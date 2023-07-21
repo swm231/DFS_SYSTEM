@@ -43,26 +43,103 @@ HttpResponse::~HttpResponse(){
 }
 
 void HttpResponse::Init(std::string path, std::string rescouce, bool isKeepAlice, int code){
+    resPath_ = "../user_resources/public/";
     path_ = path;
     resource_ = rescouce;
     isKeepAlive_ = isKeepAlice;
     code_ = code;
+    HeadStatus = HANDLE_INIT;
+    HasSentLen = MsgBodyLen = 0;
 }
 
-void HttpResponse::MaskeResponse(){
-    if(stat((path_ + resource_).c_str(), &fileSata_) < 0 || S_ISDIR(fileSata_.st_mode))
-        code_ = 404;
-    else if(!(fileSata_.st_mode) & S_IROTH) // 权限问题？
-        code_ = 403;
-    else if(code_ == -1)
-        code_ == 200;
+int HttpResponse::process(){
+    if(HeadStatus == HANDLE_INIT){
+        Parse_();
+        // if(stat((path_ + resource_).c_str(), &fileSata_) < 0 || S_ISDIR(fileSata_.st_mode))
+        //     code_ = 404;
+        // else if(!(fileSata_.st_mode) & S_IROTH) // 权限问题？
+        //     code_ = 403;
+        // else if(code_ == -1)
+        //     code_ == 200;
 
-    FindHtml_();
-    AddStateLine_();
-    AddHeader_();
-    AddContent_();
+        // FindHtml_();
+        AddStateLine_();
+        AddHeader_();
+        AddContent_();
+
+        HeadStatus = HANDLE_HEAD;
+        printf("数据准备完成！\n");
+    }
+
+    while(true){
+        long long sentLen = 0;
+        if(HeadStatus == HANDLE_HEAD){
+            sentLen = HasSentLen;
+            sentLen = send(fd_, beforeBodyMsg.c_str() + sentLen, beforeBodyMsgLen - sentLen, 0);
+            if(sentLen == -1){
+                if(errno != EAGAIN)
+                    return 3;
+                return 1;
+            }
+            HasSentLen += sentLen;
+
+            if(HasSentLen >= beforeBodyMsgLen){
+                HeadStatus = HANDLE_BODY;
+                HasSentLen = 0;
+            }
+        }
+
+        if(HeadStatus == HANDLE_BODY){
+            sentLen = HasSentLen;
+            if(BodySatus == TEXT_TYPE)
+                sentLen = send(fd_, MsgBody.c_str() + sentLen, MsgBodyLen - sentLen, 0);
+            else if(BodySatus == FILE_TYPE){
+                sentLen = sendfile(fd_, fileMsgFd, (off_t*)&sentLen, MsgBodyLen - sentLen);
+            }
+
+            if(sentLen == -1){
+                if(errno != EAGAIN)
+                    return 3;
+                return 1;
+            }
+            HasSentLen += sentLen;
+
+            if(HasSentLen >= MsgBodyLen){
+                HeadStatus = HANDLE_COMPLATE;
+                return 0;
+            }
+        }
+    }
 }
 
+void HttpResponse::Parse_(){
+    std::string::size_type idx = resource_.find('/', 1);
+    if(idx == std::string::npos) {
+        BodySatus = TEXT_TYPE;
+        return;
+    }
+
+    std::string opera = resource_.substr(1, idx - 1);
+    if(opera == "delete") {
+        resource_.erase(0, idx);
+        remove((resPath_ + resource_).c_str());
+        if(resource_ != "/css/head.css")
+            resource_ = "/public.html";
+        BodySatus = TEXT_TYPE;
+        return;
+    }
+    if(opera == "download") {
+        resource_.erase(0, idx);
+        std::cout << (resPath_ + resource_).c_str() << std::endl;
+        fileMsgFd = open((resPath_ + resource_).c_str(), O_RDONLY);
+        fstat(fileMsgFd, &fileSata_);
+        if(resource_ != "/css/head.css")
+            resource_ = "/public.html";
+        BodySatus = FILE_TYPE;
+        return;
+    }
+    BodySatus = TEXT_TYPE;
+}
 
 void HttpResponse::FindHtml_(){
     if(CODE_PATH.count(code_)){
@@ -85,9 +162,17 @@ void HttpResponse::AddHeader_(){
     // 头部
     beforeBodyMsg += "Content-Type: " + GetFileType_() + "\r\n";
     beforeBodyMsg += "Connection: keep-alive\r\n";
+
 }
 void HttpResponse::AddContent_(){
     // body
+    if(BodySatus == FILE_TYPE) {
+        beforeBodyMsg += "Location: " + std::to_string(fileSata_.st_size - 1) + "\r\n";
+        beforeBodyMsg += "Content-length: " + std::to_string(fileSata_.st_size) + "\r\n\r\n";
+        beforeBodyMsgLen = beforeBodyMsg.size();
+        MsgBodyLen = fileSata_.st_size;
+        return;
+    }
     MsgBody = "";
     if(resource_ == "/public.html")
         GetFileListPage_();
@@ -100,22 +185,21 @@ void HttpResponse::AddContent_(){
     }
     MsgBodyLen = MsgBody.size();
 
-    // body长度
-    if(MsgBody != "")
-        beforeBodyMsg += "Content-length: " + std::to_string(MsgBody.size()) + "\r\n\r\n";
+    if(BodySatus != EMPTY_TYPE)
+        beforeBodyMsg += "Content-length: " + std::to_string(MsgBodyLen) + "\r\n\r\n";
     beforeBodyMsgLen = beforeBodyMsg.size();
-    HeadStatus = HANDLE_HEAD;
-
-    printf("数据准备完成！\n");
 }
 
 std::string HttpResponse::GetFileType_(){
+    if(BodySatus == FILE_TYPE)
+        return "application/octet-stream";
     std::string::size_type idx = resource_.find_last_of('.');
     if(idx == std::string::npos)
         return "text/plain";
     std::string suffix = resource_.substr(idx);
     if(SUFFIX_TYPE.count(suffix))
         return SUFFIX_TYPE.find(suffix)->second;
+
     return "text/plain";
 }
 
@@ -125,7 +209,6 @@ void HttpResponse::GetFileListPage_(){
     
     std::ifstream fileListStream((std::string("../resources/") + "public.html").c_str(), std::ios::in);
     std::string tempLine;
-
 
     while(true){
         getline(fileListStream, tempLine);
@@ -144,7 +227,6 @@ void HttpResponse::GetFileListPage_(){
     while(getline(fileListStream, tempLine))
         MsgBody += tempLine + "\n";
 }
-
 void HttpResponse::GetFileVec_(const std::string &path, std::vector<std::string> &fileList){
     DIR *dir;
     dir = opendir(path.c_str());

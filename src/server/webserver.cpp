@@ -90,38 +90,26 @@ void WebServer::dealWrite_(HttpConn *client){
     globalThreadPool().AddTask(std::bind(&WebServer::OnWrite_, this, client));
 }
 
-
-void WebServer::OnRead_(HttpConn *client){
-    OnProcess_(client);
-}
-
 // 0:解析正确 1:继续监听 2:关闭连接 3:重定向 else:文件未找到
-void WebServer::OnProcess_(HttpConn *client){
-    int ret = client->process();
+void WebServer::OnRead_(HttpConn *client){
+    int ret = client->read_process();
     if(ret == 1)
         globalEpoll().modFd(client->GetFd(), connEvent_ | EPOLLIN);
     else if(ret == 2)
         closeConn_(client);
-    else 
+    else
         globalEpoll().modFd(client->GetFd(), connEvent_ | EPOLLOUT);
 }
 
+// 0:发送完成 1:继续发送 2:关闭连接
 void WebServer::OnWrite_(HttpConn *client){
-    // 发送
-    int ret = -1, writeErrno = 0;
-    ret = client->Send(&writeErrno);
-    if(client->GetSendStatus() == HANDLE_COMPLATE){
-        if(client->IsKeepAlive()){
-            OnProcess_(client);
-            return;
-        }
+    int ret = client->write_process();
+    if(ret == 0){
+        globalEpoll().modFd(client->GetFd(), connEvent_ | EPOLLIN);
+        printf("发送完成！\n");
     }
-    else if(ret < 0){
-        if(writeErrno == EAGAIN){
-            globalEpoll().modFd(client->GetFd(), connEvent_ | EPOLLOUT);
-            return;
-        }
-    }
-    closeConn_(client);
-    printf("发送完成！\n");
+    else if(ret == 1)
+        globalEpoll().modFd(client->GetFd(), connEvent_ | EPOLLOUT);
+    else
+        closeConn_(client);
 }
