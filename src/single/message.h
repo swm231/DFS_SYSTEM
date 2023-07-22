@@ -56,11 +56,7 @@ public:
         lineStream >> Version;
 
         if(Resource == "/")
-            Resource = "/index.html";
-        else{
-            if(DEFAULT_HTML.count(Resource))
-                Resource += ".html";
-        }
+            Resource = "/index";
     }
 
     void addHeaderOpt(const std::string &Line){
@@ -132,6 +128,6 @@ public:
 
     unsigned long long HasSentLen;
 
-    static const std::unordered_map<std::string, std::string> SUFFIX_TYPE;
+    static const std::unordered_set<std::string> DEFAULT_HTML;
     static const std::unordered_map<int, std::string> CODE_STATUS, CODE_PATH;
 };

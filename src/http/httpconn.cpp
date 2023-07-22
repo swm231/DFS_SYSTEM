@@ -38,7 +38,7 @@ int HttpConn::read_process(){
     else if(ret == 1 || ret == 2)
         return ret;
     else if(ret == 3){
-        response_.Init(srcDir_, "/public.html", request_.IsKeepAlice(), 302);
+        response_.Init(srcDir_, "/public", request_.IsKeepAlice(), 302);
     }
     else
         response_.Init(srcDir_, request_.Resource, false, 400);
@@ -51,7 +51,14 @@ int HttpConn::read_process(){
 
 // 0:发送完成 1:继续发送 2:关闭连接
 int HttpConn::write_process(){
-    return response_.process();
+    int ret = response_.process();
+    if(ret == 0){
+        if(response_.IsKeepAlice())
+            return 0;
+        else
+            return 2;
+    }
+    return ret;
 }
 
 int HttpConn::GetFd() const{

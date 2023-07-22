@@ -15,9 +15,13 @@ class HttpResponse : public Response {
 public:
     HttpResponse();
     ~HttpResponse();
-    void Init(std::string path_, std::string rescouce, bool isKeepAlice, int code);
+    void Init(const std::string &path, const std::string &rescouce, bool isKeepAlice, int code);
 
     int process();
+
+    bool IsKeepAlice() const{
+        return isKeepAlive_;
+    }
 
 private:
     void Parse_();
@@ -26,10 +30,12 @@ private:
     void AddStateLine_();
     void AddHeader_();
     void AddContent_();
+    void AddFileStream_(const std::string &fileName);
 
     std::string GetFileType_();
     void GetFileListPage_();
     void GetFileVec_(const std::string &path, std::vector<std::string> &fileList);
+    void GetHtmlPage_();
 
     int code_;
     bool isKeepAlive_;

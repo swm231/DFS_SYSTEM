@@ -6,7 +6,6 @@
 
 #include "httprequest.h"
 #include "httpresponse.h"
-#include "../single/threadpool.h"
 
 class HttpConn{
 public:

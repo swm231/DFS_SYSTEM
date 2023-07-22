@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>个人文件管理系统</title>
+    <style>
+        .header{
+            margin-right: 12px;
+        }
+        .header li{
+            list-style: none;
+            display: inline;
+            padding: 12px;
+            font-size: 25px;
+        }
+        .header a{
+            text-decoration: none;
+            color: black;
+        }
+        
+        #welcome{
+            font-size: 30px;
+        }
+        
+        .load{
+            text-decoration: none;
+            color: black;
+            font-size: 20px;
+        }
+    </style>
+</head>

@@ -1,7 +1,7 @@
 #include "httprequest.h"
 
-const std::unordered_set<std::string> Request::DEFAULT_HTML{
-        "/index", "/register", "/login", "/welcome", "/public"};
+// const std::unordered_set<std::string> Request::DEFAULT_HTML{
+//         "/index", "/register", "/login", "/welcome", "/public"};
 
 void HttpRequest::Init(int fd){
     fd_ = fd;

@@ -1,11 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>个人文件管理系统</title>
-    <link rel="stylesheet" href="css/head.css">
-
-</head>
 <body>
 
 <div class="header" style="text-align: right">
@@ -14,12 +6,3 @@
     <li><a class="navigation" href="/login">登录</a></li>
     <li><a class="navigation" href="/register">注册</a></li>
 </div>
-
-<div style="text-align: center;">
-    <p id="400">
-        400 无法解析请求
-    </p>
-</div>
-
-</body>
-</html>

@@ -1,6 +1,6 @@
 #include "webserver.h"
 
-WebServer::WebServer(int port){
+WebServer::WebServer(int port, int timeoutMS) : timeoutMS_(timeoutMS){
     HttpConn::srcDir_ = "../resources/";
 
     listenEvent_ = EPOLLRDHUP | EPOLLET;
@@ -42,9 +42,12 @@ WebServer::~WebServer(){
 }
 
 void WebServer::startUp(){
+    int timeMS = -1;
     struct epoll_event events[1024];
     while(true){
-        int eventCnt = epoll_wait(globalEpoll().GetFd(), events, 1024, -1);
+        if(timeoutMS_ > 0)
+            timeMS = globalHeapTimer().GetNextTick();
+        int eventCnt = epoll_wait(globalEpoll().GetFd(), events, 1024, timeMS);
         for(int i = 0; i < eventCnt; i ++){
             int fd = events[i].data.fd;
             uint32_t event = events[i].events;
@@ -73,11 +76,15 @@ void WebServer::dealNew_(){
     socklen_t len = sizeof addr;
     int fd = accept(listenFd_, (sockaddr*)&addr, &len);
     if(fd <= 0) return;
+    users_[fd].Init(fd, addr);
+    if(timeoutMS_ > 0)
+        globalHeapTimer().add(fd, timeoutMS_, std::bind(&WebServer::closeConn_, this, &users_[fd]));
     globalEpoll().addFd(fd, connEvent_ | EPOLLIN);
     setNonBlocking(fd);
-    users_[fd].Init(fd, addr);
+    printf("新的连接,fd:%d\n", fd);
 }
 void WebServer::closeConn_(HttpConn *client){
+    printf("关闭连接,fd:%d\n", client->GetFd());
     globalEpoll().delFd(client->GetFd());
     client->Close();
 }
@@ -85,9 +92,11 @@ void WebServer::closeConn_(HttpConn *client){
 // 分发工作
 void WebServer::dealRead_(HttpConn *client){
     globalThreadPool().AddTask(std::bind(&WebServer::OnRead_, this, client));
+    updateTimer_(client);
 }
 void WebServer::dealWrite_(HttpConn *client){
     globalThreadPool().AddTask(std::bind(&WebServer::OnWrite_, this, client));
+    updateTimer_(client);
 }
 
 // 0:解析正确 1:继续监听 2:关闭连接 3:重定向 else:文件未找到
@@ -100,7 +109,6 @@ void WebServer::OnRead_(HttpConn *client){
     else
         globalEpoll().modFd(client->GetFd(), connEvent_ | EPOLLOUT);
 }
-
 // 0:发送完成 1:继续发送 2:关闭连接
 void WebServer::OnWrite_(HttpConn *client){
     int ret = client->write_process();
@@ -112,4 +120,9 @@ void WebServer::OnWrite_(HttpConn *client){
         globalEpoll().modFd(client->GetFd(), connEvent_ | EPOLLOUT);
     else
         closeConn_(client);
+}
+
+void WebServer::updateTimer_(HttpConn *client){
+    if(timeoutMS_ > 0)
+        globalHeapTimer().update(client->GetFd(), timeoutMS_);
 }

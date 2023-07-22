@@ -1,30 +1,12 @@
 #include "httpresponse.h"
 
-const std::unordered_map<std::string, std::string> Response::SUFFIX_TYPE = {
-    { ".html",  "text/html" },
-    { ".xml",   "text/xml" },
-    { ".xhtml", "application/xhtml+xml" },
-    { ".txt",   "text/plain" },
-    { ".rtf",   "application/rtf" },
-    { ".pdf",   "application/pdf" },
-    { ".word",  "application/nsword" },
-    { ".png",   "image/png" },
-    { ".gif",   "image/gif" },
-    { ".jpg",   "image/jpeg" },
-    { ".jpeg",  "image/jpeg" },
-    { ".au",    "audio/basic" },
-    { ".mpeg",  "video/mpeg" },
-    { ".mpg",   "video/mpeg" },
-    { ".avi",   "video/x-msvideo" },
-    { ".gz",    "application/x-gzip" },
-    { ".tar",   "application/x-tar" },
-    { ".css",   "text/css "},
-    { ".js",    "text/javascript "},
+const std::unordered_set<std::string> Response::DEFAULT_HTML = {
+    "/", "/index", "/public", "/private"
 };
 
 const std::unordered_map<int, std::string> Response::CODE_STATUS = {
     { 200, "Ok"},
-    { 302, "Found"},
+    { 302, "Moved Temporarily"},
     { 400, "Bad Request" },
     { 403, "Forbidden" },
     { 404, "Not Found" },
@@ -39,10 +21,10 @@ const std::unordered_map<int, std::string> Response::CODE_PATH = {
 HttpResponse::HttpResponse() : code_(-1), path_(""), resource_(""), resPath_(""), isKeepAlive_(false){}
 
 HttpResponse::~HttpResponse(){
-
+    
 }
 
-void HttpResponse::Init(std::string path, std::string rescouce, bool isKeepAlice, int code){
+void HttpResponse::Init(const std::string &path, const std::string &rescouce, bool isKeepAlice, int code){
     resPath_ = "../user_resources/public/";
     path_ = path;
     resource_ = rescouce;
@@ -55,14 +37,15 @@ void HttpResponse::Init(std::string path, std::string rescouce, bool isKeepAlice
 int HttpResponse::process(){
     if(HeadStatus == HANDLE_INIT){
         Parse_();
-        // if(stat((path_ + resource_).c_str(), &fileSata_) < 0 || S_ISDIR(fileSata_.st_mode))
-        //     code_ = 404;
-        // else if(!(fileSata_.st_mode) & S_IROTH) // 权限问题？
-        //     code_ = 403;
-        // else if(code_ == -1)
-        //     code_ == 200;
 
-        // FindHtml_();
+        // download:"", delete:"public", text
+        if(BodySatus == TEXT_TYPE){
+            if(DEFAULT_HTML.count(resource_) == 0){
+                resource_ = "404";
+                code_ = 404;
+            }
+        }
+
         AddStateLine_();
         AddHeader_();
         AddContent_();
@@ -78,7 +61,7 @@ int HttpResponse::process(){
             sentLen = send(fd_, beforeBodyMsg.c_str() + sentLen, beforeBodyMsgLen - sentLen, 0);
             if(sentLen == -1){
                 if(errno != EAGAIN)
-                    return 3;
+                    return 2;
                 return 1;
             }
             HasSentLen += sentLen;
@@ -99,7 +82,7 @@ int HttpResponse::process(){
 
             if(sentLen == -1){
                 if(errno != EAGAIN)
-                    return 3;
+                    return 2;
                 return 1;
             }
             HasSentLen += sentLen;
@@ -123,30 +106,22 @@ void HttpResponse::Parse_(){
     if(opera == "delete") {
         resource_.erase(0, idx);
         remove((resPath_ + resource_).c_str());
-        if(resource_ != "/css/head.css")
-            resource_ = "/public.html";
+        resource_ = "/public";
+        code_ = 302;
         BodySatus = TEXT_TYPE;
         return;
     }
     if(opera == "download") {
         resource_.erase(0, idx);
-        std::cout << (resPath_ + resource_).c_str() << std::endl;
         fileMsgFd = open((resPath_ + resource_).c_str(), O_RDONLY);
         fstat(fileMsgFd, &fileSata_);
-        if(resource_ != "/css/head.css")
-            resource_ = "/public.html";
+        resource_ = "";
         BodySatus = FILE_TYPE;
         return;
     }
     BodySatus = TEXT_TYPE;
 }
 
-void HttpResponse::FindHtml_(){
-    if(CODE_PATH.count(code_)){
-        resource_ = CODE_PATH.find(code_)->second;
-        stat((path_ + resource_).c_str(), &fileSata_);
-    }
-}
 void HttpResponse::AddStateLine_(){
     // 状态行
     std::string status;
@@ -162,27 +137,19 @@ void HttpResponse::AddHeader_(){
     // 头部
     beforeBodyMsg += "Content-Type: " + GetFileType_() + "\r\n";
     beforeBodyMsg += "Connection: keep-alive\r\n";
-
+    if(code_ == 302)
+        beforeBodyMsg += "Location: /public\r\n";
 }
 void HttpResponse::AddContent_(){
     // body
     if(BodySatus == FILE_TYPE) {
-        beforeBodyMsg += "Location: " + std::to_string(fileSata_.st_size - 1) + "\r\n";
         beforeBodyMsg += "Content-length: " + std::to_string(fileSata_.st_size) + "\r\n\r\n";
         beforeBodyMsgLen = beforeBodyMsg.size();
         MsgBodyLen = fileSata_.st_size;
         return;
     }
     MsgBody = "";
-    if(resource_ == "/public.html")
-        GetFileListPage_();
-    else{
-        std::ifstream fileStream(path_ + resource_, std::ios::in);
-        std::string TempLine;
-        while(getline(fileStream, TempLine)){
-            MsgBody += TempLine + "\n";
-        }
-    }
+    GetHtmlPage_();
     MsgBodyLen = MsgBody.size();
 
     if(BodySatus != EMPTY_TYPE)
@@ -193,21 +160,32 @@ void HttpResponse::AddContent_(){
 std::string HttpResponse::GetFileType_(){
     if(BodySatus == FILE_TYPE)
         return "application/octet-stream";
-    std::string::size_type idx = resource_.find_last_of('.');
-    if(idx == std::string::npos)
-        return "text/plain";
-    std::string suffix = resource_.substr(idx);
-    if(SUFFIX_TYPE.count(suffix))
-        return SUFFIX_TYPE.find(suffix)->second;
+    return "text/html";
+}
 
-    return "text/plain";
+void HttpResponse::GetHtmlPage_(){
+    AddFileStream_("title");
+    AddFileStream_("head");
+    if(resource_ != "/public"){
+        AddFileStream_(resource_);
+        return;
+    }
+    GetFileListPage_();
+}
+
+void HttpResponse::AddFileStream_(const std::string &fileName){
+    std::ifstream fileListStream("../resources/" + fileName, std::ios::in);
+    std::string tempLine;
+
+    while(getline(fileListStream, tempLine))
+        MsgBody += tempLine + "\n";
 }
 
 void HttpResponse::GetFileListPage_(){
     std::vector<std::string> fileVec;
     GetFileVec_(resPath_ == "" ? "../user_resources/public" : resPath_, fileVec);
-    
-    std::ifstream fileListStream((std::string("../resources/") + "public.html").c_str(), std::ios::in);
+
+    std::ifstream fileListStream((std::string("../resources/") + "public").c_str(), std::ios::in);
     std::string tempLine;
 
     while(true){
