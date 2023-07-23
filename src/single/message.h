@@ -72,7 +72,9 @@ public:
         getline(lineStream, value);
         value.pop_back();
 
-        if(key == "Content-Type"){
+        if(key == "Content-Length")
+            BodyLen = std::stoi(value);
+        else if(key == "Content-Type"){
             std::string::size_type semIdx = value.find(";");
             if(semIdx != std::string::npos){
                 MsgHeader[key] = value.substr(0, semIdx);
@@ -96,6 +98,8 @@ public:
     std::string Version;
 
     std::string recvFileName;
+
+    unsigned int BodyLen;
 
     FILEMSGESTATUS FileStatus;
     static const std::unordered_set<std::string> DEFAULT_HTML;
@@ -122,6 +126,6 @@ public:
     int FileMsgFd;
 
     unsigned long long HasSentLen;
-    
+
     static const std::unordered_map<int, std::string> CODE_STATUS, CODE_PATH;
 };

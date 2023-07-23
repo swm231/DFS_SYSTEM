@@ -18,7 +18,7 @@ public:
     ~HttpResponse();
 
     void Init(const std::string &srcDir, const std::string &resDir, const std::string action, 
-            const std::string &resource, bool isKeepAlice, int code);
+            const std::string &username, const std::string &resource, bool isKeepAlice, int code);
     void Close();
     int process();
 
@@ -50,4 +50,5 @@ private:
     struct stat fileSata_;
     int fileMsgFd;
 
+    std::string username_;
 };

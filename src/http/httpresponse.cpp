@@ -21,12 +21,13 @@ HttpResponse::~HttpResponse(){
 }
 
 void HttpResponse::Init(const std::string &srcDir, const std::string &resDir, const std::string action, 
-            const std::string &resource, bool isKeepAlice, int code){
-    resPath_ = resDir;
+            const std::string &resource, const std::string &username, bool isKeepAlice, int code){
     path_ = srcDir;
-    resource_ = resource;
-    isKeepAlive_ = isKeepAlice;
+    resPath_ = resDir;
     action_ = action;
+    resource_ = resource;
+    username_ = username;
+    isKeepAlive_ = isKeepAlice;
     code_ = code;
     HeadStatus = HANDLE_INIT;
     HasSentLen = MsgBodyLen = 0;
@@ -89,15 +90,29 @@ int HttpResponse::process(){
 void HttpResponse::Parse_(){
     if(action_ == "/delete"){
         if(resPath_ == "/public")
-            remove(("../user_resources/" + resPath_ + resource_).c_str());
-        // else
+            remove(("../user_resources" + resPath_ + resource_).c_str());
+        else if(resPath_ == "/private"){
+            if(username_ == "")
+                resource_ = "/login";
+            else 
+                remove(("../user/resources" + resPath_ + username_ + resource_).c_str());
+        }
         BodySatus = TEXT_TYPE;
+        code_ = 200;
         return;
     }
     if(action_ == "/download"){
         if(resPath_ == "/public")
             fileMsgFd = open(("../user_resources" + resPath_ + resource_).c_str(), O_RDONLY);
-        // else
+        else if(resPath_ == "/private"){
+            if(username_ == ""){
+                resource_ = "/login";
+            BodySatus = TEXT_TYPE;
+            code_ = 200;
+            return;
+            }
+            else fileMsgFd = open(("../user_resources" + resPath_ + username_ + resource_).c_str(), O_RDONLY);
+        }
         fstat(fileMsgFd, &fileSata_);
         BodySatus = FILE_TYPE;
         code_ = 200;

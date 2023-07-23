@@ -90,7 +90,6 @@ void WebServer::OnRead_(HttpConn *client){
 // 0:发送完成 1:继续发送 2:关闭连接
 void WebServer::OnWrite_(HttpConn *client){
     int ret = client->write_process();
-    printf("%d\n", ret);
     if(ret == 0){
         globalEpoll().modFd(client->GetFd(), connEvent_ | EPOLLIN);
         printf("发送完成！\n");
