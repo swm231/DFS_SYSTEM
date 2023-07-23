@@ -1,19 +1,20 @@
 #include "httprequest.h"
 
-// const std::unordered_set<std::string> Request::DEFAULT_HTML{
-//         "/index", "/register", "/login", "/welcome", "/public"};
+const std::unordered_set<std::string> Request::DEFAULT_HTML{
+        "/index", "/register", "/login", "/welcome", "/public", "/private"};
 
 void HttpRequest::Init(int fd){
     fd_ = fd;
-    Method = Resource = Version = recvFileName = "";
+    code_ = -1;
+    Method = Resource = Version = recvFileName = resDir_ = action_ = "";
     HeadStatus = HANDLE_INIT;
     BodySatus = EMPTY_TYPE;
     FileStatus = FILE_BEGIN;
     MsgHeader.clear();
-    ContentLength = MsgBodyRecvLen = 0;
 }
+void HttpRequest::Close(){}
 
-// 0:解析正确 1:继续监听 2:关闭连接 3:重定向 else:文件未找到
+// 0:解析正确 1:继续监听 2:关闭连接
 int HttpRequest::process(){
     std::cout << "开始解析" << std::endl;
     char buff[4096];
@@ -37,7 +38,7 @@ int HttpRequest::process(){
             endIndex = RecvMsg.find("\r\n");
             if(endIndex == std::string::npos)
                 continue;
-            setRequestLine(RecvMsg.substr(0, endIndex + 2));
+            PraseQuestLine(RecvMsg.substr(0, endIndex + 2));
             RecvMsg.erase(0, endIndex + 2);
             HeadStatus = HANDLE_HEAD;
         }
@@ -84,7 +85,7 @@ int HttpRequest::process(){
                             RecvMsg.erase(0, endIndex + 2);
                         }
                         else
-                            return 3;
+                            return 0;
                     }
 
                     // 文件名
@@ -153,7 +154,7 @@ int HttpRequest::process(){
                     if(FileStatus == FILE_COMPLATE){
                         RecvMsg.erase(0, MsgHeader["boundary"].size() + 8);
                         HeadStatus = HANDLE_COMPLATE;
-                        return 3;
+                        return 0;
                     }
                 }
                 // 其他
@@ -165,7 +166,39 @@ int HttpRequest::process(){
         }
     }
 
-    return -1;
+    code_ = 404;
+    return 0;
+}
+
+void HttpRequest::PraseQuestLine(const std::string &line){
+    std::istringstream lineStream(line);
+    lineStream >> Method;
+    lineStream >> Resource;
+    lineStream >> Version;
+
+    std::cout << "请求资源" << Resource << std::endl;
+
+    if(Resource == "/")
+        Resource = "/index";
+    else{
+        std::string::size_type idx = Resource.find('/', 1);
+        if(idx == std::string::npos){
+            resDir_ = Resource;
+            return;
+        }
+
+        resDir_ = Resource.substr(0, idx);
+        Resource.erase(0, idx);
+
+        idx = Resource.find('/', 1);
+        if(idx == std::string::npos){
+            code_ = 404;
+            return;
+        }
+        code_ = 302;
+        action_ = Resource.substr(0, idx);
+        Resource.erase(0, idx);
+    }
 }
 
 void HttpRequest::Append(const char *str, size_t len){
@@ -174,6 +207,6 @@ void HttpRequest::Append(const char *str, size_t len){
 
 bool HttpRequest::IsKeepAlice() const{
     if(MsgHeader.count("Connection") == 1)
-        return MsgHeader.find("Connection")->second == "keep-alive" && Version == "1.1";
+        return MsgHeader.find("Connection")->second == "keep-alive" && Version == "HTTP/1.1";
     return false;
 }

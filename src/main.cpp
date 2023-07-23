@@ -12,10 +12,14 @@ HeapTimer& globalHeapTimer(){
     static HeapTimer globalHeapTimer;
     return globalHeapTimer;
 }
+SqlConnPool& globalSqlConnPool(){
+    static SqlConnPool globalSqlConnPool;
+    return globalSqlConnPool;
+}
 
 int main()
 {
-    // 端口号, timeout(ms)
-    WebServer server(8888, 30000);
+    // 端口号, timeout(ms), mysql(username, passward, dbname) 
+    WebServer server(8888, 30000, "root", "123456", "WebServer");
     server.startUp();
 }

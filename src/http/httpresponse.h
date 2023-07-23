@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <netinet/in.h>
 #include <sys/sendfile.h>
+#include <unistd.h>
 
 #include "../single/message.h"
 #include "../single/epoll.h"
@@ -15,8 +16,10 @@ class HttpResponse : public Response {
 public:
     HttpResponse();
     ~HttpResponse();
-    void Init(const std::string &path, const std::string &rescouce, bool isKeepAlice, int code);
 
+    void Init(const std::string &srcDir, const std::string &resDir, const std::string action, 
+            const std::string &resource, bool isKeepAlice, int code);
+    void Close();
     int process();
 
     bool IsKeepAlice() const{
@@ -26,7 +29,6 @@ public:
 private:
     void Parse_();
 
-    void FindHtml_();
     void AddStateLine_();
     void AddHeader_();
     void AddContent_();
@@ -43,6 +45,7 @@ private:
     std::string path_;
     std::string resource_;
     std::string resPath_;
+    std::string action_;
 
     struct stat fileSata_;
     int fileMsgFd;

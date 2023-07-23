@@ -1,9 +1,5 @@
 #include "httpresponse.h"
 
-const std::unordered_set<std::string> Response::DEFAULT_HTML = {
-    "/", "/index", "/public", "/private"
-};
-
 const std::unordered_map<int, std::string> Response::CODE_STATUS = {
     { 200, "Ok"},
     { 302, "Moved Temporarily"},
@@ -24,28 +20,25 @@ HttpResponse::~HttpResponse(){
     
 }
 
-void HttpResponse::Init(const std::string &path, const std::string &rescouce, bool isKeepAlice, int code){
-    resPath_ = "../user_resources/public/";
-    path_ = path;
-    resource_ = rescouce;
+void HttpResponse::Init(const std::string &srcDir, const std::string &resDir, const std::string action, 
+            const std::string &resource, bool isKeepAlice, int code){
+    resPath_ = resDir;
+    path_ = srcDir;
+    resource_ = resource;
     isKeepAlive_ = isKeepAlice;
+    action_ = action;
     code_ = code;
     HeadStatus = HANDLE_INIT;
     HasSentLen = MsgBodyLen = 0;
+}
+void HttpResponse::Close(){
+    if(fileMsgFd != -1)
+        close(fileMsgFd);
 }
 
 int HttpResponse::process(){
     if(HeadStatus == HANDLE_INIT){
         Parse_();
-
-        // download:"", delete:"public", text
-        if(BodySatus == TEXT_TYPE){
-            if(DEFAULT_HTML.count(resource_) == 0){
-                resource_ = "404";
-                code_ = 404;
-            }
-        }
-
         AddStateLine_();
         AddHeader_();
         AddContent_();
@@ -76,10 +69,8 @@ int HttpResponse::process(){
             sentLen = HasSentLen;
             if(BodySatus == TEXT_TYPE)
                 sentLen = send(fd_, MsgBody.c_str() + sentLen, MsgBodyLen - sentLen, 0);
-            else if(BodySatus == FILE_TYPE){
+            else if(BodySatus == FILE_TYPE)
                 sentLen = sendfile(fd_, fileMsgFd, (off_t*)&sentLen, MsgBodyLen - sentLen);
-            }
-
             if(sentLen == -1){
                 if(errno != EAGAIN)
                     return 2;
@@ -96,27 +87,20 @@ int HttpResponse::process(){
 }
 
 void HttpResponse::Parse_(){
-    std::string::size_type idx = resource_.find('/', 1);
-    if(idx == std::string::npos) {
+    if(action_ == "/delete"){
+        if(resPath_ == "/public")
+            remove(("../user_resources/" + resPath_ + resource_).c_str());
+        // else
         BodySatus = TEXT_TYPE;
         return;
     }
-
-    std::string opera = resource_.substr(1, idx - 1);
-    if(opera == "delete") {
-        resource_.erase(0, idx);
-        remove((resPath_ + resource_).c_str());
-        resource_ = "/public";
-        code_ = 302;
-        BodySatus = TEXT_TYPE;
-        return;
-    }
-    if(opera == "download") {
-        resource_.erase(0, idx);
-        fileMsgFd = open((resPath_ + resource_).c_str(), O_RDONLY);
+    if(action_ == "/download"){
+        if(resPath_ == "/public")
+            fileMsgFd = open(("../user_resources" + resPath_ + resource_).c_str(), O_RDONLY);
+        // else
         fstat(fileMsgFd, &fileSata_);
-        resource_ = "";
         BodySatus = FILE_TYPE;
+        code_ = 200;
         return;
     }
     BodySatus = TEXT_TYPE;
@@ -183,9 +167,11 @@ void HttpResponse::AddFileStream_(const std::string &fileName){
 
 void HttpResponse::GetFileListPage_(){
     std::vector<std::string> fileVec;
-    GetFileVec_(resPath_ == "" ? "../user_resources/public" : resPath_, fileVec);
+    if(resPath_ == "/public")
+        GetFileVec_("../user_resources/public", fileVec);
+    // else 
 
-    std::ifstream fileListStream((std::string("../resources/") + "public").c_str(), std::ios::in);
+    std::ifstream fileListStream("../resources/public", std::ios::in);
     std::string tempLine;
 
     while(true){
@@ -194,11 +180,10 @@ void HttpResponse::GetFileListPage_(){
             break;
         MsgBody += tempLine + "\n";
     }
-
     for(auto &filename : fileVec){
         MsgBody += "            <tr><td>" + filename +
-                    "</td> <td><a href=\"download/" + filename +
-                    "\">下载</a></td> <td><a href=\"delete/" + filename +
+                    "</td> <td><a href=\"" + resPath_ + "/download/" + filename +
+                    "\">下载</a></td> <td><a href=\"" + resPath_ + "/delete/" + filename +
                     "\" onclick=\"return confirmDelete();\">删除</a></td></tr>" + "\n";
     }
 

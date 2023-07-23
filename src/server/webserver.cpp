@@ -1,40 +1,18 @@
 #include "webserver.h"
 
-WebServer::WebServer(int port, int timeoutMS) : timeoutMS_(timeoutMS){
+WebServer::WebServer(int port, int timeoutMS, const char *username, const char *pwd, const char *dbname)
+         : port_(port), timeoutMS_(timeoutMS), stop_(false){
     HttpConn::srcDir_ = "../resources/";
 
     listenEvent_ = EPOLLRDHUP | EPOLLET;
     connEvent_ = EPOLLONESHOT | EPOLLRDHUP | EPOLLET;
 
-    int ret;
-    struct linger optLinger = {0};
-    struct sockaddr_in listenAddr;
-    listenAddr.sin_family = AF_INET;
-    listenAddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    listenAddr.sin_port = htons(port);
-
-    listenFd_ = socket(AF_INET, SOCK_STREAM, 0);
-    assert(listenFd_ >= 0);
-    // error
-
-    ret = setsockopt(listenFd_, SOL_SOCKET, SO_LINGER, &optLinger, sizeof(optLinger));
-    // error
-
-    int optval = 1;
-    ret = setsockopt(listenFd_, SOL_SOCKET, SO_REUSEADDR, (const void*)&optval, sizeof(int));
-    // error
-
-    ret = bind(listenFd_, (sockaddr*)&listenAddr, sizeof(listenAddr));
-    assert(ret >= 0);
-    // error
-
-    ret = listen(listenFd_, 10);
-    assert(ret >= 0);
-    // error
-
-    setNonBlocking(listenFd_);
-
-    globalEpoll().addFd(listenFd_, listenEvent_ | EPOLLIN);
+    if(InitListenSocket() == false){
+        // Log;
+        stop_ = true;
+    }
+    globalSqlConnPool().Init("localhost", username, pwd, dbname);
+    
 }
 
 WebServer::~WebServer(){
@@ -44,7 +22,7 @@ WebServer::~WebServer(){
 void WebServer::startUp(){
     int timeMS = -1;
     struct epoll_event events[1024];
-    while(true){
+    while(!stop_){
         if(timeoutMS_ > 0)
             timeMS = globalHeapTimer().GetNextTick();
         int eventCnt = epoll_wait(globalEpoll().GetFd(), events, 1024, timeMS);
@@ -112,6 +90,7 @@ void WebServer::OnRead_(HttpConn *client){
 // 0:发送完成 1:继续发送 2:关闭连接
 void WebServer::OnWrite_(HttpConn *client){
     int ret = client->write_process();
+    printf("%d\n", ret);
     if(ret == 0){
         globalEpoll().modFd(client->GetFd(), connEvent_ | EPOLLIN);
         printf("发送完成！\n");
@@ -125,4 +104,49 @@ void WebServer::OnWrite_(HttpConn *client){
 void WebServer::updateTimer_(HttpConn *client){
     if(timeoutMS_ > 0)
         globalHeapTimer().update(client->GetFd(), timeoutMS_);
+}
+
+bool WebServer::InitListenSocket(){
+    int ret;
+    struct linger optLinger;
+
+    struct sockaddr_in listenAddr;
+    listenAddr.sin_family = AF_INET;
+    listenAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    listenAddr.sin_port = htons(port_);
+
+    listenFd_ = socket(AF_INET, SOCK_STREAM, 0);
+    if(listenFd_ == -1){
+        // log
+        return false;
+    }
+
+    ret = setsockopt(listenFd_, SOL_SOCKET, SO_LINGER, &optLinger, sizeof(optLinger));
+    if(ret == -1){
+        // log
+        return false;
+    }
+    int optval = 1;
+    ret = setsockopt(listenFd_, SOL_SOCKET, SO_REUSEADDR, (const void*)&optval, sizeof(int));
+    if(ret == -1){
+        // log
+        return false;
+    }
+
+    ret = bind(listenFd_, (sockaddr*)&listenAddr, sizeof(listenAddr));
+    if(ret == -1){
+        // log
+        return false;
+    }
+
+    ret = listen(listenFd_, 10);
+    if(ret == -1){
+        // log
+        return false;
+    }
+
+    setNonBlocking(listenFd_);
+    globalEpoll().addFd(listenFd_, listenEvent_ | EPOLLIN);
+
+    return true;
 }

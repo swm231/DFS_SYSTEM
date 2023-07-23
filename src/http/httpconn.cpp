@@ -23,25 +23,21 @@ void HttpConn::Close(){
         isClose_ = true;
         userCount--;
         close(fd_);
+        request_.Close();
+        response_.Close();
     }
 }
 
-// 0:解析正确 1:继续监听 2:关闭连接 3:重定向 else:文件未找到
+// 0:解析正确 1:继续监听 2:关闭连接
 int HttpConn::read_process(){
     int ret = request_.process();
     printf("解析完成:%d\n", ret);
-    std::cout << "请求资源:" << request_.Resource << std::endl;
 
-    if(ret == 0){
-        response_.Init(srcDir_, request_.Resource, request_.IsKeepAlice(), 200);
-    }
-    else if(ret == 1 || ret == 2)
-        return ret;
-    else if(ret == 3){
-        response_.Init(srcDir_, "/public", request_.IsKeepAlice(), 302);
-    }
+    if(ret == 0)
+        response_.Init(srcDir_, request_.Get_resDir(), request_.Get_action(), request_.Resource, 
+            request_.IsKeepAlice(), request_.Get_code() == -1 ? 200 : request_.Get_code());
     else
-        response_.Init(srcDir_, request_.Resource, false, 400);
+        return ret;
 
     request_.Init(fd_);
     request_.RecvMsg = "";
@@ -58,6 +54,7 @@ int HttpConn::write_process(){
         else
             return 2;
     }
+    printf("%d\n", ret);
     return ret;
 }
 

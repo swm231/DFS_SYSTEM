@@ -16,4 +16,4 @@ find_package(Threads)
 
 target_link_libraries(main ${CMAKE_THREAD_LIBS_INIT})
 
-# target_link_libraries(main mysqlclient)
+target_link_libraries(main mysqlclient)

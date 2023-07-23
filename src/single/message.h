@@ -47,7 +47,7 @@ public:
 
 class Request : public Message{
 public:
-    Request() : Message(), ContentLength(0){}
+    Request() : Message(){}
 
     void setRequestLine(const std::string &Line){
         std::istringstream lineStream(Line);
@@ -72,9 +72,7 @@ public:
         getline(lineStream, value);
         value.pop_back();
 
-        if(key == "Content-Length")
-            ContentLength = std::stoll(value);
-        else if(key == "Content-Type"){
+        if(key == "Content-Type"){
             std::string::size_type semIdx = value.find(";");
             if(semIdx != std::string::npos){
                 MsgHeader[key] = value.substr(0, semIdx);
@@ -96,9 +94,6 @@ public:
     std::string Method;
     std::string Resource;
     std::string Version;
-
-    long long ContentLength;
-    long long MsgBodyRecvLen;
 
     std::string recvFileName;
 
@@ -127,7 +122,6 @@ public:
     int FileMsgFd;
 
     unsigned long long HasSentLen;
-
-    static const std::unordered_set<std::string> DEFAULT_HTML;
+    
     static const std::unordered_map<int, std::string> CODE_STATUS, CODE_PATH;
 };
