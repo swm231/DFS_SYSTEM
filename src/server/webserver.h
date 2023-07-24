@@ -15,12 +15,13 @@ extern HeapTimer& globalHeapTimer();
 
 class WebServer{
 public:
-    WebServer(int port, int timeoutMS, 
+    WebServer(int port, int timeoutMS, int cookieOut, const char *host,
         const char *username, const char *pwd, const char *dbname);
     ~WebServer();
 
     void startUp();
 
+    static int _cookieOut;
 private:
     bool InitListenSocket();
 

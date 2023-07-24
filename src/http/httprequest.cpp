@@ -5,12 +5,14 @@ const std::unordered_set<std::string> Request::DEFAULT_HTML{
 
 void HttpRequest::Init(int fd){
     fd_ = fd;
+    isSetCookie_ = 0;
     code_ = LoginStatus_ = -1;
-    Method = Resource = Version = recvFileName = resDir_ = action_ = Body_ = username_ = "";
+    Method = Resource = Version = recvFileName = resDir_ = action_ = Body_ = username_ = cookie_ = cookie_key_ = "";
     HeadStatus = HANDLE_INIT;
     BodySatus = EMPTY_TYPE;
     FileStatus = FILE_BEGIN;
     MsgHeader.clear();
+    MsgBody_.clear();
 }
 void HttpRequest::Close(){}
 
@@ -88,6 +90,10 @@ void HttpRequest::ParseQuestLine_(){
 
     if(Resource == "/")
         Resource = "/index";
+    else if(Resource == "/logout"){
+        isSetCookie_ = -1;
+        Resource = "/index";
+    }
     else{
         std::string::size_type idx = Resource.find('/', 1);
         if(idx == std::string::npos){
@@ -125,7 +131,7 @@ void HttpRequest::ParseHeadLine_(){
             }
             break;
         }
-        addHeaderOpt(curLine);
+        ParseHeadLine_(curLine);
     }
 }
 
@@ -147,6 +153,49 @@ void HttpRequest::ParseBodyLine_(){
     }
     if(key != "" || value != "")
         MsgBody_[key] = value;
+}
+
+void HttpRequest::ParseHeadLine_(const std::string &Line){
+    std::istringstream lineStream(Line);
+
+    std::string key, value;
+
+    lineStream >> key;
+    key.pop_back();
+
+    lineStream.get();
+
+    getline(lineStream, value);
+    value.pop_back();
+
+    if(key == "Content-Length")
+        BodyLen = std::stoi(value);
+    else if(key == "Content-Type"){
+        std::string::size_type semIdx = value.find(";");
+        if(semIdx != std::string::npos){
+            MsgHeader[key] = value.substr(0, semIdx);
+            std::string::size_type eqIdx = value.find("=", semIdx);
+            key = value.substr(semIdx + 2, eqIdx - semIdx - 2);
+            MsgHeader[key] = value.substr(eqIdx + 1);
+        }
+        else
+            MsgHeader[key] = value;
+    }
+    else if(key == "Cookie")
+        ParseCookie_(value);
+    else
+        MsgHeader[key] = value;
+}
+
+void HttpRequest::ParseCookie_(const std::string &Line){
+    bool flag = false;
+    for(int i = 0; Line[i]; i++)
+        if(Line[i] == '=')
+            flag = true;
+        else if(flag)
+            cookie_ += Line[i];
+        else
+            cookie_key_ += Line[i];
 }
 
 int HttpRequest::ParseFile_(){
@@ -192,7 +241,11 @@ int HttpRequest::ParseFile_(){
 
     // 文件内容
     if(FileStatus == FILE_CONTENT){
-        std::ofstream ofs("../user_resources/public/" + recvFileName, std::ios::out | std::ios::app | std::ios::binary);
+        std::ofstream ofs;
+        if(Resource == "/public")
+            ofs.open("../user_resources/public/" + recvFileName, std::ios::out | std::ios::app | std::ios::binary);
+        else if(Resource == "/private")
+            ofs.open(("../user_resources/private/" + username_ + "/" + recvFileName).c_str(), std::ios::out | std::ios::app | std::ios::binary);
         if(!ofs){
             // log
             return 1;
@@ -246,17 +299,12 @@ int HttpRequest::ParseUser_(){
     }
     if(BodyLen <= 0){
         ParseBodyLine_();
-        Verify_();
         return 0;
     }
     return -1;
 }
 
-void HttpRequest::Verify_(){
-    std::string name = MsgBody_["username"], password = MsgBody_["password"];
-    if(name == "" || password == "")
-        return;
-
+void HttpRequest::Verify(){
     MYSQL *sql;
     SqlConnRAII RAII(&sql);
 
@@ -264,17 +312,43 @@ void HttpRequest::Verify_(){
     char order[256] = {0};
     MYSQL_FIELD *fields = nullptr;
     MYSQL_RES *res = nullptr;
+    MYSQL_ROW row;
+
+    // 验证cookie
+    if(cookie_ != ""){
+        snprintf(order, 256,
+            "SELECT username FROM user WHERE cookie = '%s' LIMIT 1", cookie_.c_str());
+        mysql_query(sql, order);
+        res = mysql_store_result(sql);
+        row = mysql_fetch_row(res);
+        if(row){
+            if(encipher::getMD5(row[0], 4) == cookie_key_){
+                username_ = row[0];
+                LoginStatus_ = 0;
+                return;
+            }
+        }
+        cookie_ = "";
+    }
+
+    // 验证用户名密码
+    if(MsgBody_.count("username") == 0 || MsgBody_.count("password") == 0)
+        return;
+
+    std::string name = MsgBody_["username"], password = MsgBody_["password"];
+    if(name == "" || password == "")
+        return;
 
     snprintf(order, 256, 
         "SELECT username, password FROM user WHERE username = '%s' LIMIT 1;", name.c_str());
-    
+
     if(mysql_query(sql, order))
         return;
     res = mysql_store_result(sql);
     j = mysql_num_fields(res);
     fields = mysql_fetch_field(res);
 
-    MYSQL_ROW row = mysql_fetch_row(res);
+    row = mysql_fetch_row(res);
     if(row){
         std::string pwd(row[1]);
         if(pwd == password) {
@@ -285,12 +359,14 @@ void HttpRequest::Verify_(){
         else {
             LoginStatus_ = 1;
             Resource = "/pwderr";
+            MsgBody_.erase("username");
         }
     }
     else{
         LoginStatus_ = 2;
         if(Resource == "/login")
-            Resource = "/namerr";
+            Resource = "/namerr",
+            MsgBody_.erase("username");
         else if(Resource == "/register"){
             bzero(order, 256);
             snprintf(order, 256,
@@ -300,14 +376,26 @@ void HttpRequest::Verify_(){
             Login_();
         }
     }
+    if(cookie_ != ""){
+        bzero(order, 256);
+        snprintf(order, 256,
+            "UPDATE user SET cookie = '%s' WHERE username = '%s'", cookie_.c_str(), username_.c_str());
+        mysql_query(sql, order);
+    }
 }
 
 void HttpRequest::Login_(){
-    Resource = "/welcome";
     if(LoginStatus_ == 2)
-        mkdir(("../user_resources/" + username_).c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
+        mkdir(("../user_resources/private/" + username_).c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
 
     LoginStatus_ = 0;
+    isSetCookie_ = 1;
+    Resource = "/welcome";
+    AddCookie_();
+}
+
+void HttpRequest::AddCookie_(){
+    cookie_ = encipher::getCookieValue();
 }
 
 void HttpRequest::Append(const char *str, size_t len){

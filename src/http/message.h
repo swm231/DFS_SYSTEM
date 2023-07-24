@@ -8,6 +8,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "../single/encipher.h"
+
 // 表示http信息处理状态
 enum MSGSTATUS{
     HANDLE_INIT,
@@ -59,35 +61,6 @@ public:
             Resource = "/index";
     }
 
-    void addHeaderOpt(const std::string &Line){
-        std::istringstream lineStream(Line);
-
-        std::string key, value;
-
-        lineStream >> key;
-        key.pop_back();
-
-        lineStream.get();
-
-        getline(lineStream, value);
-        value.pop_back();
-
-        if(key == "Content-Length")
-            BodyLen = std::stoi(value);
-        else if(key == "Content-Type"){
-            std::string::size_type semIdx = value.find(";");
-            if(semIdx != std::string::npos){
-                MsgHeader[key] = value.substr(0, semIdx);
-                std::string::size_type eqIdx = value.find("=", semIdx);
-                key = value.substr(semIdx + 2, eqIdx - semIdx - 2);
-                MsgHeader[key] = value.substr(eqIdx + 1);
-            }
-            else
-                MsgHeader[key] = value;
-        }
-        else
-            MsgHeader[key] = value;
-    }
 
 public:
     // buffer

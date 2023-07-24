@@ -19,7 +19,7 @@ SqlConnPool& globalSqlConnPool(){
 
 int main()
 {
-    // 端口号, timeout(ms), mysql(username, passward, dbname) 
-    WebServer server(8888, 30000, "root", "123456", "WebServer");
+    // 端口号, timeout(ms), cookie, mysql(username, passward, dbname) 
+    WebServer server(8888, 60000, 3600, "8.130.86.160", "swm_231", "123456", "WebServer");
     server.startUp();
 }

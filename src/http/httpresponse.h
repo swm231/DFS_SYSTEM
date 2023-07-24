@@ -9,7 +9,7 @@
 #include <sys/sendfile.h>
 #include <unistd.h>
 
-#include "../single/message.h"
+#include "message.h"
 #include "../single/epoll.h"
 
 class HttpResponse : public Response {
@@ -17,8 +17,8 @@ public:
     HttpResponse();
     ~HttpResponse();
 
-    void Init(const std::string &srcDir, const std::string &resDir, const std::string action, 
-            const std::string &username, const std::string &resource, bool isKeepAlice, int code);
+    void Init(const std::string &srcDir, const std::string &resDir, const std::string action, const std::string &resource,
+            const std::string &username, int isSetCookie, const std::string &cookie, bool isKeepAlice, int code);
     void Close();
     int process();
 
@@ -51,4 +51,6 @@ private:
     int fileMsgFd;
 
     std::string username_;
+    std::string cookie_;
+    int isSetCookie_;
 };

@@ -1,8 +1,13 @@
 #include "webserver.h"
 
-WebServer::WebServer(int port, int timeoutMS, const char *username, const char *pwd, const char *dbname)
+int WebServer::_cookieOut;
+
+WebServer::WebServer(int port, int timeoutMS, int cookieOut, const char *host, const char *username, const char *pwd, const char *dbname)
          : port_(port), timeoutMS_(timeoutMS), stop_(false){
     HttpConn::srcDir_ = "../resources/";
+
+    _cookieOut = cookieOut;
+    srand(time(NULL));
 
     listenEvent_ = EPOLLRDHUP | EPOLLET;
     connEvent_ = EPOLLONESHOT | EPOLLRDHUP | EPOLLET;
@@ -11,10 +16,8 @@ WebServer::WebServer(int port, int timeoutMS, const char *username, const char *
         // Log;
         stop_ = true;
     }
-    globalSqlConnPool().Init("localhost", username, pwd, dbname);
-    
+    globalSqlConnPool().Init(host, username, pwd, dbname);
 }
-
 WebServer::~WebServer(){
     close(listenFd_);
 }
@@ -48,6 +51,7 @@ void WebServer::startUp(){
         }
     }
 }
+bool flag = true;
 
 void WebServer::dealNew_(){
     struct sockaddr_in addr;
@@ -57,12 +61,13 @@ void WebServer::dealNew_(){
     users_[fd].Init(fd, addr);
     if(timeoutMS_ > 0)
         globalHeapTimer().add(fd, timeoutMS_, std::bind(&WebServer::closeConn_, this, &users_[fd]));
+    std::this_thread::sleep_for(std::chrono::microseconds(200));
     globalEpoll().addFd(fd, connEvent_ | EPOLLIN);
     setNonBlocking(fd);
-    printf("新的连接,fd:%d\n", fd);
+
+    printf("新的连接 ip:%s port:%d fd:%d\n", inet_ntoa(addr.sin_addr), ntohs(addr.sin_port), fd);
 }
 void WebServer::closeConn_(HttpConn *client){
-    printf("关闭连接,fd:%d\n", client->GetFd());
     globalEpoll().delFd(client->GetFd());
     client->Close();
 }
@@ -125,6 +130,7 @@ bool WebServer::InitListenSocket(){
         // log
         return false;
     }
+
     int optval = 1;
     ret = setsockopt(listenFd_, SOL_SOCKET, SO_REUSEADDR, (const void*)&optval, sizeof(int));
     if(ret == -1){
@@ -135,6 +141,7 @@ bool WebServer::InitListenSocket(){
     ret = bind(listenFd_, (sockaddr*)&listenAddr, sizeof(listenAddr));
     if(ret == -1){
         // log
+        printf("%d\n", errno);
         return false;
     }
 

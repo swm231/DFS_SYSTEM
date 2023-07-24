@@ -13,7 +13,7 @@ void SqlConnPool::Init(const char *host, const char *user,
             // log
             continue;
         }
-        sql = mysql_real_connect(sql, host, user, pwd, dbName, 0, nullptr, 0);
+        sql = mysql_real_connect(sql, host, user, pwd, dbName, 3306, nullptr, 0);
         if(!sql){
             // log
             continue;

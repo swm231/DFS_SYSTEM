@@ -13,20 +13,20 @@ const std::unordered_map<int, std::string> Response::CODE_PATH = {
     { 403, "/403.html" },
     { 404, "/404.html" },
 };
-
+ 
 HttpResponse::HttpResponse() : code_(-1), path_(""), resource_(""), resPath_(""), isKeepAlive_(false){}
 
-HttpResponse::~HttpResponse(){
-    
-}
+HttpResponse::~HttpResponse(){}
 
-void HttpResponse::Init(const std::string &srcDir, const std::string &resDir, const std::string action, 
-            const std::string &resource, const std::string &username, bool isKeepAlice, int code){
+void HttpResponse::Init(const std::string &srcDir, const std::string &resDir, const std::string action, const std::string &resource, 
+        const std::string &username, int isSetCookie, const std::string &cookie, bool isKeepAlice, int code){
     path_ = srcDir;
     resPath_ = resDir;
     action_ = action;
     resource_ = resource;
     username_ = username;
+    isSetCookie_ = isSetCookie;
+    cookie_ = cookie;
     isKeepAlive_ = isKeepAlice;
     code_ = code;
     HeadStatus = HANDLE_INIT;
@@ -138,6 +138,11 @@ void HttpResponse::AddHeader_(){
     beforeBodyMsg += "Connection: keep-alive\r\n";
     if(code_ == 302)
         beforeBodyMsg += "Location: /public\r\n";
+    if(isSetCookie_ == 1)
+        beforeBodyMsg += "Set-Cookie: " + encipher::getMD5(username_, 4) + "=" + cookie_ + ";\r\n";
+    else if(isSetCookie_ == -1){
+        beforeBodyMsg += "Set-Cookie: " + encipher::getMD5(username_, 4) + "=" + cookie_ + "; Max-Age=0\r\n";
+    }
 }
 void HttpResponse::AddContent_(){
     // body
@@ -164,7 +169,14 @@ std::string HttpResponse::GetFileType_(){
 
 void HttpResponse::GetHtmlPage_(){
     AddFileStream_("title");
-    AddFileStream_("head");
+    if(username_ == "" || isSetCookie_ == -1)
+        AddFileStream_("head");
+    else{
+        AddFileStream_("head_");
+        MsgBody += "        <div class=\"User\"><ul><li><a class=\"navigation\" href=\"/private\">" + username_ +
+            "</a></li><li><a class=\"navigation\" href=\"/logout\">" + "登出" +
+            "</a></li></ul></div></div>";
+    }
     if(resource_ != "/public"){
         AddFileStream_(resource_);
         return;
@@ -184,7 +196,8 @@ void HttpResponse::GetFileListPage_(){
     std::vector<std::string> fileVec;
     if(resPath_ == "/public")
         GetFileVec_("../user_resources/public", fileVec);
-    // else 
+    else if(resPath_ == "/private")
+        GetFileVec_(("../user_resources/private/" + username_).c_str(), fileVec);
 
     std::ifstream fileListStream("../resources/public", std::ios::in);
     std::string tempLine;

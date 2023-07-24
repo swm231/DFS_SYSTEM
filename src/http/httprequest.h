@@ -5,7 +5,7 @@
 #include <arpa/inet.h>
 #include <cstring>
 
-#include "../single/message.h"
+#include "message.h"
 #include "../pool/sqlconnraii.h"
 
 class HttpRequest : public Request{
@@ -19,6 +19,7 @@ public:
     bool IsKeepAlice() const;
 
     int process();
+    void Verify();
 
     void Append(const char *str, size_t len);
 
@@ -31,19 +32,27 @@ public:
     std::string& Get_username(){
         return username_;
     }
+    std::string& Get_cookie(){
+        return cookie_;
+    }
     int Get_code(){
         return code_;
+    }
+    int isSetCookie(){
+        return isSetCookie_;
     }
 private:
     void ParseQuestLine_();
     void ParseHeadLine_();
     void ParseBodyLine_();
 
+    void ParseHeadLine_(const std::string &Line);
+    void ParseCookie_(const std::string &Line);
     int ParseFile_();
     int ParseUser_();
 
-    void Verify_();
     void Login_();
+    void AddCookie_();
 
     int code_;
     bool isKeepAlive_;
@@ -53,6 +62,9 @@ private:
     // 0:全部正确 1:密码错误 2:用户不存在 -1:格式错误
     int LoginStatus_;
     std::string username_;
+    std::string cookie_key_;
+    std::string cookie_;
+    int isSetCookie_;
 
     std::string Body_;
     std::unordered_map<std::string, std::string> MsgBody_;
