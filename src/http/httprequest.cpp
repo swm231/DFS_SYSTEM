@@ -8,6 +8,7 @@ void HttpRequest::Init(int fd){
     isSetCookie_ = 0;
     code_ = LoginStatus_ = -1;
     Method = Resource = Version = recvFileName = resDir_ = action_ = Body_ = username_ = cookie_ = cookie_key_ = "";
+    printf("请求初始化\n");
     HeadStatus = HANDLE_INIT;
     BodySatus = EMPTY_TYPE;
     FileStatus = FILE_BEGIN;
@@ -42,6 +43,9 @@ int HttpRequest::process(){
         if(HeadStatus == HANDLE_HEAD)
             ParseHeadLine_();
 
+        // 验证cookie
+        Verify();
+
         // 消息体
         if(HeadStatus == HANDLE_BODY){
             if(Method == "GET"){
@@ -62,6 +66,7 @@ int HttpRequest::process(){
                 else {
                     int ret = ParseUser_();
                     if(ret == -1) continue;
+                    Verify();
                     return ret;
                 }
             }
@@ -245,7 +250,9 @@ int HttpRequest::ParseFile_(){
         if(Resource == "/public")
             ofs.open("../user_resources/public/" + recvFileName, std::ios::out | std::ios::app | std::ios::binary);
         else if(Resource == "/private")
-            ofs.open(("../user_resources/private/" + username_ + "/" + recvFileName).c_str(), std::ios::out | std::ios::app | std::ios::binary);
+            ofs.open("../user_resources/private/" + username_ + "/" + recvFileName, std::ios::out | std::ios::app | std::ios::binary);
+        std::cout << "../user_resources/private/" + username_ + "/" + recvFileName << std::endl;
+        // std::cout << recvFileName << std::endl;
         if(!ofs){
             // log
             return 1;
@@ -287,8 +294,10 @@ int HttpRequest::ParseFile_(){
     if(FileStatus == FILE_COMPLATE){
         RecvMsg.erase(0, MsgHeader["boundary"].size() + 8);
         HeadStatus = HANDLE_COMPLATE;
+        printf("文件处理完成!!\n");
         return 0;
     }
+    return -1;
 }
 
 int HttpRequest::ParseUser_(){

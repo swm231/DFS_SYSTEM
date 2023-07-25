@@ -169,6 +169,8 @@ std::string HttpResponse::GetFileType_(){
 
 void HttpResponse::GetHtmlPage_(){
     AddFileStream_("title");
+
+    // 没有登陆 或者 要登出了
     if(username_ == "" || isSetCookie_ == -1)
         AddFileStream_("head");
     else{
@@ -177,13 +179,15 @@ void HttpResponse::GetHtmlPage_(){
             "</a></li><li><a class=\"navigation\" href=\"/logout\">" + "登出" +
             "</a></li></ul></div></div>";
     }
-    if(resource_ != "/public"){
+    if(username_ == "" && resource_ == "/private")
+        resource_ = "/login";
+
+    if(resource_ != "/public" && resource_ != "/private"){
         AddFileStream_(resource_);
         return;
     }
     GetFileListPage_();
 }
-
 void HttpResponse::AddFileStream_(const std::string &fileName){
     std::ifstream fileListStream("../resources/" + fileName, std::ios::in);
     std::string tempLine;
@@ -194,12 +198,14 @@ void HttpResponse::AddFileStream_(const std::string &fileName){
 
 void HttpResponse::GetFileListPage_(){
     std::vector<std::string> fileVec;
+    std::ifstream fileListStream;
     if(resPath_ == "/public")
-        GetFileVec_("../user_resources/public", fileVec);
+        GetFileVec_("../user_resources/public", fileVec),
+        fileListStream.open("../resources/public", std::ios::in);
     else if(resPath_ == "/private")
-        GetFileVec_(("../user_resources/private/" + username_).c_str(), fileVec);
+        GetFileVec_("../user_resources/private/" + username_, fileVec),
+        fileListStream.open("../resources/private", std::ios::in);
 
-    std::ifstream fileListStream("../resources/public", std::ios::in);
     std::string tempLine;
 
     while(true){
@@ -222,7 +228,7 @@ void HttpResponse::GetFileVec_(const std::string &path, std::vector<std::string>
     DIR *dir;
     dir = opendir(path.c_str());
     struct dirent *stdinfo;
-    while (1)
+    while(true)
     {
         // 获取文件夹中的一个文件
         stdinfo = readdir(dir);

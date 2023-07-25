@@ -36,8 +36,7 @@ void WebServer::startUp(){
                 dealNew_();
             }
             else if(event & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)){
-                globalEpoll().delFd(fd);
-                close(fd);
+                closeConn_(&users_[fd]);
             }
             else if(event & EPOLLIN){
                 dealRead_(&users_[fd]);
@@ -51,7 +50,6 @@ void WebServer::startUp(){
         }
     }
 }
-bool flag = true;
 
 void WebServer::dealNew_(){
     struct sockaddr_in addr;
@@ -61,7 +59,6 @@ void WebServer::dealNew_(){
     users_[fd].Init(fd, addr);
     if(timeoutMS_ > 0)
         globalHeapTimer().add(fd, timeoutMS_, std::bind(&WebServer::closeConn_, this, &users_[fd]));
-    std::this_thread::sleep_for(std::chrono::microseconds(200));
     globalEpoll().addFd(fd, connEvent_ | EPOLLIN);
     setNonBlocking(fd);
 
@@ -82,7 +79,7 @@ void WebServer::dealWrite_(HttpConn *client){
     updateTimer_(client);
 }
 
-// 0:解析正确 1:继续监听 2:关闭连接 3:重定向 else:文件未找到
+// 0:解析正确 1:继续监听 2:关闭连接
 void WebServer::OnRead_(HttpConn *client){
     int ret = client->read_process();
     if(ret == 1)

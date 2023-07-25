@@ -32,11 +32,9 @@ void HttpConn::Close(){
 // 0:解析正确 1:继续监听 2:关闭连接
 int HttpConn::read_process(){
     int ret = request_.process();
-    if(ret == 0){
-        request_.Verify();
+    if(ret == 0)
         response_.Init(srcDir_, request_.Get_resDir(), request_.Get_action(), request_.Resource, request_.Get_username(), request_.isSetCookie(), 
             request_.Get_cookie(), request_.IsKeepAlice(), request_.Get_code() == -1 ? 200 : request_.Get_code());
-    }
     else
         return ret;
 

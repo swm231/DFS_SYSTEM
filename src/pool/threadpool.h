@@ -13,7 +13,7 @@ class ThreadPool{
 public:    
     ThreadPool(int threadNum = 4) : stop_(false){
         for(int i = 0; i < threadNum; i++){
-            workers_.emplace_back([this]{
+            workers_.emplace_back([this, i]{
                 for(;;){
                     std::function<void()> task;
                     {
@@ -24,7 +24,9 @@ public:
                         task = std::move(tasks_.front());
                         tasks_.pop();
                     }
+                    printf("%d号线程开始工作...\n", i);
                     task();
+                    printf("%d号线程工作完成！\n", i);
                 }
             });
         }
