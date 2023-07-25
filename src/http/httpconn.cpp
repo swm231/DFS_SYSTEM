@@ -39,7 +39,7 @@ int HttpConn::read_process(){
         return ret;
 
     request_.Init(fd_);
-    request_.RecvMsg = "";
+    request_.RecvMsg.AddHandledAll();
 
     return ret;
 }

@@ -2,6 +2,8 @@
 
 int WebServer::_cookieOut;
 
+char Message::CR[] = "\r";
+char Message::CRLF[] = "\r\n";
 WebServer::WebServer(int port, int timeoutMS, int cookieOut, const char *host, const char *username, const char *pwd, const char *dbname)
          : port_(port), timeoutMS_(timeoutMS), stop_(false){
     HttpConn::srcDir_ = "../resources/";

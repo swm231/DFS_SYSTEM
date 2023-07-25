@@ -31,7 +31,7 @@ int HttpRequest::process(){
             return 1;
         }
 
-        RecvMsg.append(buff, recvLen);
+        RecvMsg.Append(buff, recvLen);
 
         std::string::size_type endIndex;
 
@@ -78,12 +78,12 @@ int HttpRequest::process(){
 }
 
 void HttpRequest::ParseQuestLine_(){
-    std::string::size_type endIndex = RecvMsg.find("\r\n");
-    if(endIndex == std::string::npos)
+    const char *lineEnd = std::search(RecvMsg.Peek(), RecvMsg.BeginWriteConst(), CRLF, CRLF + 2);
+    if(lineEnd == RecvMsg.BeginWriteConst())
         return;
-    
-    std::string curLine = RecvMsg.substr(0, endIndex + 2);
-    RecvMsg.erase(0, endIndex + 2);
+
+    std::string curLine(RecvMsg.Peek(), lineEnd - RecvMsg.Peek() + 2);
+    RecvMsg.AddHandled(lineEnd - RecvMsg.Peek() + 2);
     HeadStatus = HANDLE_HEAD;
 
     std::istringstream lineStream(curLine);
@@ -121,13 +121,13 @@ void HttpRequest::ParseQuestLine_(){
 }
 
 void HttpRequest::ParseHeadLine_(){
-    std::string::size_type endIndex;
+    const char *lineEnd;
     while(true){
-        endIndex = RecvMsg.find("\r\n");
-        if(endIndex == std::string::npos)
+        lineEnd = std::search(RecvMsg.Peek(), RecvMsg.BeginWriteConst(), CRLF, CRLF + 2);
+        if(lineEnd == RecvMsg.BeginWriteConst())
             break;
-        std::string curLine = RecvMsg.substr(0, endIndex + 2);
-        RecvMsg.erase(0, endIndex + 2);
+        std::string curLine(RecvMsg.Peek(), lineEnd - RecvMsg.Peek() + 2);
+        RecvMsg.AddHandled(lineEnd - RecvMsg.Peek() + 2);
 
         if(curLine == "\r\n"){
             HeadStatus = HANDLE_BODY;
@@ -205,18 +205,19 @@ void HttpRequest::ParseCookie_(const std::string &Line){
 
 int HttpRequest::ParseFile_(){
     std::string::size_type endIndex;
+    const char *lineEnd; 
     std::string strLine;
 
     // 边界首
     if(FileStatus == FILE_BEGIN){
-        endIndex = RecvMsg.find("\r\n");
-        if(endIndex == std::string::npos)
+        lineEnd = std::search(RecvMsg.Peek(), RecvMsg.BeginWriteConst(), CRLF, CRLF + 2);
+        if(lineEnd == RecvMsg.BeginWriteConst())
             return -1;
 
-        strLine = RecvMsg.substr(0, endIndex);
+        strLine = std::string(RecvMsg.Peek(), lineEnd - RecvMsg.Peek());
         if(strLine == std::string("--") + MsgHeader["boundary"]){
             FileStatus = FILE_HEAD;
-            RecvMsg.erase(0, endIndex + 2);
+            RecvMsg.AddHandled(lineEnd - RecvMsg.Peek() + 2);
         }
         else
             return 0;
@@ -225,12 +226,12 @@ int HttpRequest::ParseFile_(){
     // 文件名
     if(FileStatus == FILE_HEAD)
         while(true){
-            endIndex = RecvMsg.find("\r\n");
-            if(endIndex == std::string::npos)
+            lineEnd = std::search(RecvMsg.Peek(), RecvMsg.BeginWriteConst(), CRLF, CRLF + 2);
+            if(lineEnd == RecvMsg.BeginWriteConst())
                 break;
 
-            strLine = RecvMsg.substr(0, endIndex + 2);
-            RecvMsg.erase(0, endIndex + 2);
+            strLine = std::string(RecvMsg.Peek(), lineEnd - RecvMsg.Peek()  + 2);
+            RecvMsg.AddHandled(lineEnd - RecvMsg.Peek() + 2);
 
             if(strLine == "\r\n"){
                 FileStatus = FILE_CONTENT;
@@ -252,31 +253,31 @@ int HttpRequest::ParseFile_(){
         else if(Resource == "/private")
             ofs.open("../user_resources/private/" + username_ + "/" + recvFileName, std::ios::out | std::ios::app | std::ios::binary);
         std::cout << "../user_resources/private/" + username_ + "/" + recvFileName << std::endl;
-        // std::cout << recvFileName << std::endl;
+
         if(!ofs){
             // log
             return 1;
         }
         while(true){
-            int saveLen = RecvMsg.size();
+            int saveLen = RecvMsg.UnHandleBytes();
             if(saveLen == 0)
                 break;
 
-            endIndex = RecvMsg.find('\r');
-            if(endIndex != std::string::npos){
+            lineEnd = std::search(RecvMsg.Peek(), RecvMsg.BeginWriteConst(), CR, CR + 1);
+            if(lineEnd != RecvMsg.BeginWriteConst()){
                 int endBoundaryLen = MsgHeader["boundary"].size() + 8;
-                if(RecvMsg.size() - endIndex >= endBoundaryLen){
-                    if(RecvMsg.substr(endIndex, endBoundaryLen) == "\r\n--" + MsgHeader["boundary"] + "--\r\n"){
-                        if(endIndex == 0){
+                if(RecvMsg.BeginWriteConst() - lineEnd >= endBoundaryLen){
+                    if(std::string(lineEnd, endBoundaryLen) == "\r\n--" + MsgHeader["boundary"] + "--\r\n"){
+                        if(lineEnd == RecvMsg.Peek()){
                             FileStatus = FILE_COMPLATE;
                             break;
                         }
-                        saveLen = endIndex;
+                        saveLen = lineEnd - RecvMsg.Peek();
                     }
                     else{
-                        endIndex = RecvMsg.find('\r', endIndex + 1);
-                        if(endIndex != std::string::npos)
-                            saveLen = endIndex;
+                        lineEnd = std::search(lineEnd + 1, RecvMsg.BeginWriteConst(), CR, CR + 1);
+                        if(lineEnd != RecvMsg.BeginWriteConst())
+                            saveLen = lineEnd - RecvMsg.Peek();
                     }
                 }
                 else{
@@ -285,14 +286,14 @@ int HttpRequest::ParseFile_(){
                     saveLen = endIndex;
                 }
             }
-            ofs.write(RecvMsg.c_str(), saveLen);
-            RecvMsg.erase(0, saveLen);
+            ofs.write(RecvMsg.Peek(), saveLen);
+            RecvMsg.AddHandled(saveLen);
         }
         ofs.close();
     }
     // 边界尾
     if(FileStatus == FILE_COMPLATE){
-        RecvMsg.erase(0, MsgHeader["boundary"].size() + 8);
+        RecvMsg.AddHandled(MsgHeader["boundary"].size() + 8);
         HeadStatus = HANDLE_COMPLATE;
         printf("文件处理完成!!\n");
         return 0;
@@ -302,8 +303,9 @@ int HttpRequest::ParseFile_(){
 
 int HttpRequest::ParseUser_(){
     if(BodyLen > 0){
-        int mn = std::min(BodyLen, static_cast<unsigned int>(RecvMsg.size()));
-        Body_ += RecvMsg.substr(0, mn);
+        int mn = std::min(BodyLen, static_cast<unsigned int>(RecvMsg.UnHandleBytes()));
+        Body_ += std::string(RecvMsg.Peek(), mn);
+        RecvMsg.AddHandled(mn);
         BodyLen -= mn;
     }
     if(BodyLen <= 0){
@@ -408,7 +410,7 @@ void HttpRequest::AddCookie_(){
 }
 
 void HttpRequest::Append(const char *str, size_t len){
-    RecvMsg.append(str, len);
+    RecvMsg.Append(str, len);
 }
 
 bool HttpRequest::IsKeepAlice() const{

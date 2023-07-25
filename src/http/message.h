@@ -5,10 +5,12 @@
 #include <string>
 #include <sstream>
 #include <fstream>
+#include <algorithm>
 #include <unordered_map>
 #include <unordered_set>
 
 #include "../single/encipher.h"
+#include "../buffer/buffer.h"
 
 // 表示http信息处理状态
 enum MSGSTATUS{
@@ -36,15 +38,18 @@ enum FILEMSGESTATUS{
 
 class Message{
 public:
-    Message() : HeadStatus(HANDLE_INIT), BodySatus(EMPTY_TYPE){}
+    Message() : HeadStatus(HANDLE_INIT), BodySatus(EMPTY_TYPE), SaveErrno(0){}
 
 public:
     int fd_;
+    int SaveErrno;
 
     MSGSTATUS HeadStatus;
     MSGBODYTYPE BodySatus;
 
     std::unordered_map<std::string, std::string> MsgHeader;
+    static char CR[];
+    static char CRLF[];
 };
 
 class Request : public Message{
@@ -61,10 +66,8 @@ public:
             Resource = "/index";
     }
 
-
 public:
-    // buffer
-    std::string RecvMsg;
+    Buffer RecvMsg;
 
     std::string Method;
     std::string Resource;
@@ -90,11 +93,11 @@ public:
 
     std::string bodyFileName;
 
-    std::string beforeBodyMsg;
+    Buffer beforeBodyMsg;
     int beforeBodyMsgLen;
 
-    std::string MsgBody;
-    unsigned long long MsgBodyLen;
+    Buffer BodyMsg;
+    unsigned long long BodyMsgLen;
 
     int FileMsgFd;
 
