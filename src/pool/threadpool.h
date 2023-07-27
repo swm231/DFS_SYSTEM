@@ -9,6 +9,8 @@
 #include <future>
 #include <assert.h>
 
+#include "../log/log.h"
+
 class ThreadPool{
 public:    
     ThreadPool(int threadNum = 4) : stop_(false){
@@ -24,9 +26,9 @@ public:
                         task = std::move(tasks_.front());
                         tasks_.pop();
                     }
-                    printf("%d号线程开始工作...\n", i);
+                    LOG_DEBUG("[thread] %d号线程收到工作中...", i);
                     task();
-                    printf("%d号线程工作完成！\n", i);
+                    LOG_DEBUG("[thread] %d号线程工作已完成!!!", i);
                 }
             });
         }

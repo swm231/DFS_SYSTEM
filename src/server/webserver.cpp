@@ -1,24 +1,30 @@
 #include "webserver.h"
 
-int WebServer::_cookieOut;
-
+int Response::CookieOut;
 char Message::CR[] = "\r";
 char Message::CRLF[] = "\r\n";
-WebServer::WebServer(int port, int timeoutMS, int cookieOut, const char *host, const char *username, const char *pwd, const char *dbname)
+WebServer::WebServer(int port, int timeoutMS, const char *host, const char *username, const char *pwd,
+        const char *dbname, bool OpenLog, int Loglevel, int cookieOut)
          : port_(port), timeoutMS_(timeoutMS), stop_(false){
     HttpConn::srcDir_ = "../resources/";
 
-    _cookieOut = cookieOut;
+    if(OpenLog)
+        globalLog().Init(Loglevel);
+
+    Response::CookieOut = cookieOut;
     srand(time(NULL));
 
     listenEvent_ = EPOLLRDHUP | EPOLLET;
     connEvent_ = EPOLLONESHOT | EPOLLRDHUP | EPOLLET;
 
     if(InitListenSocket() == false){
-        // Log;
+        LOG_ERROR("套接字初始化失败！服务器启动失败！");
         stop_ = true;
     }
     globalSqlConnPool().Init(host, username, pwd, dbname);
+
+    if(!stop_)
+        LOG_INFO("============SERVER START============");
 }
 WebServer::~WebServer(){
     close(listenFd_);
@@ -47,7 +53,7 @@ void WebServer::startUp(){
                 dealWrite_(&users_[fd]);
             }
             else{
-                // error
+                LOG_ERROR("[epoll] Unexpected Event!");
             }
         }
     }
@@ -64,11 +70,11 @@ void WebServer::dealNew_(){
     globalEpoll().addFd(fd, connEvent_ | EPOLLIN);
     setNonBlocking(fd);
 
-    printf("新的连接 ip:%s port:%d fd:%d\n", inet_ntoa(addr.sin_addr), ntohs(addr.sin_port), fd);
 }
 void WebServer::closeConn_(HttpConn *client){
     globalEpoll().delFd(client->GetFd());
     client->Close();
+
 }
 
 // 分发工作
@@ -96,7 +102,6 @@ void WebServer::OnWrite_(HttpConn *client){
     int ret = client->write_process();
     if(ret == 0){
         globalEpoll().modFd(client->GetFd(), connEvent_ | EPOLLIN);
-        printf("发送完成！\n");
     }
     else if(ret == 1)
         globalEpoll().modFd(client->GetFd(), connEvent_ | EPOLLOUT);
@@ -120,33 +125,32 @@ bool WebServer::InitListenSocket(){
 
     listenFd_ = socket(AF_INET, SOCK_STREAM, 0);
     if(listenFd_ == -1){
-        // log
+        LOG_ERROR("[socket] init ERROR");
         return false;
     }
 
     ret = setsockopt(listenFd_, SOL_SOCKET, SO_LINGER, &optLinger, sizeof(optLinger));
     if(ret == -1){
-        // log
+        LOG_ERROR("[socket] set ERROR");
         return false;
     }
 
     int optval = 1;
     ret = setsockopt(listenFd_, SOL_SOCKET, SO_REUSEADDR, (const void*)&optval, sizeof(int));
     if(ret == -1){
-        // log
+        LOG_ERROR("[socket] set ERROR");
         return false;
     }
 
     ret = bind(listenFd_, (sockaddr*)&listenAddr, sizeof(listenAddr));
     if(ret == -1){
-        // log
-        printf("%d\n", errno);
+        LOG_ERROR("[socket] bind ERROR");
         return false;
     }
 
     ret = listen(listenFd_, 10);
     if(ret == -1){
-        // log
+        LOG_ERROR("[socket] listen ERROR");
         return false;
     }
 

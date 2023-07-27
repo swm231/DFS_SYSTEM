@@ -4,11 +4,11 @@ const std::unordered_set<std::string> Request::DEFAULT_HTML{
         "/index", "/register", "/login", "/welcome", "/public", "/private", "/namerr", "/pwderr"};
 
 void HttpRequest::Init(int fd){
+    LOG_DEBUG("[http] fd:%d 请求初始化", fd);
     fd_ = fd;
     isSetCookie_ = 0;
     code_ = LoginStatus_ = -1;
     Method = Resource = Version = recvFileName = resDir_ = action_ = Body_ = username_ = cookie_ = cookie_key_ = "";
-    printf("请求初始化\n");
     HeadStatus = HANDLE_INIT;
     BodySatus = EMPTY_TYPE;
     FileStatus = FILE_BEGIN;
@@ -19,7 +19,7 @@ void HttpRequest::Close(){}
 
 // 0:解析正确 1:继续监听 2:关闭连接
 int HttpRequest::process(){
-    std::cout << "开始解析" << std::endl;
+    LOG_DEBUG("[http] fd:%d 开始解析", fd_);
     char buff[4096];
     while(true){
         int recvLen = recv(fd_, buff, 4096, 0);
@@ -44,7 +44,8 @@ int HttpRequest::process(){
             ParseHeadLine_();
 
         // 验证cookie
-        Verify();
+        if(LoginStatus_ == -1)
+            Verify();
 
         // 消息体
         if(HeadStatus == HANDLE_BODY){
@@ -91,7 +92,7 @@ void HttpRequest::ParseQuestLine_(){
     lineStream >> Resource;
     lineStream >> Version;
 
-    std::cout << "请求资源" << Resource << std::endl;
+    LOG_DEBUG("[http] fd:%d 请求资源 %s, %s, %s", fd_, Method.c_str(), Resource.c_str(), Version.c_str());
 
     if(Resource == "/")
         Resource = "/index";
@@ -247,15 +248,15 @@ int HttpRequest::ParseFile_(){
 
     // 文件内容
     if(FileStatus == FILE_CONTENT){
-        std::ofstream ofs;
+        std::string filePath;
         if(Resource == "/public")
-            ofs.open("../user_resources/public/" + recvFileName, std::ios::out | std::ios::app | std::ios::binary);
+            filePath = "../user_resources/public/" + recvFileName;
         else if(Resource == "/private")
-            ofs.open("../user_resources/private/" + username_ + "/" + recvFileName, std::ios::out | std::ios::app | std::ios::binary);
-        std::cout << "../user_resources/private/" + username_ + "/" + recvFileName << std::endl;
-
+            filePath = "../user_resources/private/" + username_ + "/" + recvFileName;
+        std::ofstream ofs(filePath.c_str(), std::ios::out | std::ios::app | std::ios::binary);
+        
         if(!ofs){
-            // log
+            LOG_ERROR("[http] fd:%d 文件打开失败 %s", fd_, filePath.c_str());
             return 1;
         }
         while(true){
@@ -274,16 +275,16 @@ int HttpRequest::ParseFile_(){
                         }
                         saveLen = lineEnd - RecvMsg.Peek();
                     }
-                    else{
+                    else if(lineEnd + 1 < RecvMsg.BeginWriteConst()){
                         lineEnd = std::search(lineEnd + 1, RecvMsg.BeginWriteConst(), CR, CR + 1);
                         if(lineEnd != RecvMsg.BeginWriteConst())
                             saveLen = lineEnd - RecvMsg.Peek();
                     }
                 }
                 else{
-                    if(endIndex == 0)
+                    if(lineEnd == RecvMsg.Peek())
                         break;
-                    saveLen = endIndex;
+                    saveLen = lineEnd - RecvMsg.Peek();
                 }
             }
             ofs.write(RecvMsg.Peek(), saveLen);
@@ -295,7 +296,8 @@ int HttpRequest::ParseFile_(){
     if(FileStatus == FILE_COMPLATE){
         RecvMsg.AddHandled(MsgHeader["boundary"].size() + 8);
         HeadStatus = HANDLE_COMPLATE;
-        printf("文件处理完成!!\n");
+        RecvMsg.AddHandledAll();
+        LOG_DEBUG("[http] fd:%d 文件处理完成", fd_);
         return 0;
     }
     return -1;
@@ -327,6 +329,7 @@ void HttpRequest::Verify(){
 
     // 验证cookie
     if(cookie_ != ""){
+        LOG_INFO("[http] cookie fd:%d %s %s", fd_, cookie_key_.c_str(), cookie_.c_str());
         snprintf(order, 256,
             "SELECT username FROM user WHERE cookie = '%s' LIMIT 1", cookie_.c_str());
         mysql_query(sql, order);
@@ -350,6 +353,7 @@ void HttpRequest::Verify(){
     if(name == "" || password == "")
         return;
 
+    LOG_INFO("[http] 用户名密码 fd:%d %s %s", fd_, name.c_str(), password.c_str());
     snprintf(order, 256, 
         "SELECT username, password FROM user WHERE username = '%s' LIMIT 1;", name.c_str());
 

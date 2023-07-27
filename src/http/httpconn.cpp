@@ -16,6 +16,8 @@ void HttpConn::Init(int fd, const sockaddr_in &addr){
     isClose_ = false;
     request_.Init(fd);
     response_.fd_ = fd;
+
+    LOG_INFO("[http] 新的连接 ip:%s port:%d fd:%d 在线人数:%d", inet_ntoa(addr.sin_addr), ntohs(addr.sin_port), fd, (int)userCount);
 }
 
 void HttpConn::Close(){
@@ -23,9 +25,10 @@ void HttpConn::Close(){
         isClose_ = true;
         userCount--;
         close(fd_);
-        printf("套接字%d关闭\n", fd_);
         request_.Close();
         response_.Close();
+        
+        LOG_INFO("[http] 连接关闭 fd:%d 在线人数:%d", fd_, (int)userCount);
     }
 }
 

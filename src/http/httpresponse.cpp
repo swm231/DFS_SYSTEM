@@ -13,7 +13,9 @@ const std::unordered_map<int, std::string> Response::CODE_PATH = {
     { 403, "/403.html" },
     { 404, "/404.html" },
 };
- 
+
+extern int _cookieOut;
+
 HttpResponse::HttpResponse() : code_(-1), path_(""), resource_(""), resPath_(""), isKeepAlive_(false){}
 
 HttpResponse::~HttpResponse(){}
@@ -45,7 +47,7 @@ int HttpResponse::process(){
         AddContent_();
 
         HeadStatus = HANDLE_HEAD;
-        printf("数据准备完成！\n");
+        LOG_DEBUG("[http] fd:%d 数据准备完成", fd_);
     }
 
     while(true){
@@ -107,11 +109,11 @@ void HttpResponse::Parse_(){
         else if(resPath_ == "/private"){
             if(username_ == ""){
                 resource_ = "/login";
-            BodySatus = TEXT_TYPE;
-            code_ = 200;
-            return;
+                BodySatus = TEXT_TYPE;
+                code_ = 200;
+                return;
             }
-            else fileMsgFd = open(("../user_resources" + resPath_ + username_ + resource_).c_str(), O_RDONLY);
+            else fileMsgFd = open(("../user_resources" + resPath_ + "/" + username_ + resource_).c_str(), O_RDONLY);
         }
         fstat(fileMsgFd, &fileSata_);
         BodySatus = FILE_TYPE;
@@ -139,7 +141,7 @@ void HttpResponse::AddHeader_(){
     if(code_ == 302)
         beforeBodyMsg.Append("Location: " + resPath_ + "\r\n");
     if(isSetCookie_ == 1)
-        beforeBodyMsg.Append("Set-Cookie: " + encipher::getMD5(username_, 4) + "=" + cookie_ + ";\r\n");
+        beforeBodyMsg.Append("Set-Cookie: " + encipher::getMD5(username_, 4) + "=" + cookie_ + "; Max-Age=" + std::to_string(CookieOut) + "\r\n");
     else if(isSetCookie_ == -1){
         beforeBodyMsg.Append("Set-Cookie: " + encipher::getMD5(username_, 4) + "=" + cookie_ + "; Max-Age=0\r\n");
     }

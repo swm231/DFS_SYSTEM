@@ -11,6 +11,7 @@
 
 #include "../single/encipher.h"
 #include "../buffer/buffer.h"
+#include "../log/log.h"
 
 // 表示http信息处理状态
 enum MSGSTATUS{
@@ -104,4 +105,5 @@ public:
     unsigned long long HasSentLen;
 
     static const std::unordered_map<int, std::string> CODE_STATUS, CODE_PATH;
+    static int CookieOut;
 };

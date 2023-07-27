@@ -16,10 +16,19 @@ SqlConnPool& globalSqlConnPool(){
     static SqlConnPool globalSqlConnPool;
     return globalSqlConnPool;
 }
+Log& globalLog(){
+    static Log globalLog;
+    return globalLog;
+}
 
 int main()
 {
-    // 端口号, timeout(ms), cookie, mysql(username, passward, dbname) 
-    WebServer server(8888, 60000, 3600, "8.130.86.160", "swm_231", "123456", "WebServer");
+    WebServer server(80, 60000,
+            "8.130.86.160", "swm_231", "123456", "WebServer",
+            true, 1, 3600);
     server.startUp();
 }
+/*  端口号, timeout(ms), 
+    mysql(username, passward, dbname) 
+    日志开关, 日志等级,  cookie
+*/
