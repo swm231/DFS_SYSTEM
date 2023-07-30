@@ -9,10 +9,6 @@
 #include "../pool/threadpool.h"
 #include "../http/httpconn.h"
 
-extern Epoll& globalEpoll();
-extern ThreadPool& globalThreadPool();
-extern HeapTimer& globalHeapTimer();
-
 class WebServer{
 public:
     WebServer(int port, int timeoutMS, const char *host,const char *username, const char *pwd,

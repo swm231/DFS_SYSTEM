@@ -13,6 +13,25 @@
 
 class ThreadPool{
 public:    
+    static ThreadPool &Instance(){
+        static ThreadPool instance;
+        return instance;
+    }
+
+    template<class F, class... Args>
+    auto AddTask(F &&f, Args&&... args) -> std::future<decltype(f(args...))>{
+        auto task_ptr = std::make_shared<std::packaged_task<decltype(f(args...))()> >(
+            std::bind(std::forward<F>(f), std::forward<Args>(args)...));
+        {
+            std::unique_lock<std::mutex> locker(mtx_);
+            assert(!stop_);
+            tasks_.push([task_ptr]{ (*task_ptr)(); });
+        }
+        cv_.notify_one();
+        return task_ptr->get_future();
+    }
+
+private:
     ThreadPool(int threadNum = 4) : stop_(false){
         for(int i = 0; i < threadNum; i++){
             workers_.emplace_back([this, i]{
@@ -43,20 +62,6 @@ public:
             worker.join();
     }
 
-    template<class F, class... Args>
-    auto AddTask(F &&f, Args&&... args) -> std::future<decltype(f(args...))>{
-        auto task_ptr = std::make_shared<std::packaged_task<decltype(f(args...))()> >(
-            std::bind(std::forward<F>(f), std::forward<Args>(args)...));
-        {
-            std::unique_lock<std::mutex> locker(mtx_);
-            assert(!stop_);
-            tasks_.push([task_ptr]{ (*task_ptr)(); });
-        }
-        cv_.notify_one();
-        return task_ptr->get_future();
-    }
-
-private:
     std::mutex mtx_;
     std::condition_variable cv_;
     std::queue<std::function<void()> > tasks_;

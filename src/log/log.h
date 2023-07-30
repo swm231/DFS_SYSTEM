@@ -13,8 +13,10 @@
 
 class Log{
 public:
-    Log();
-    ~Log();
+    static Log &Instance(){
+        static Log instance;
+        return instance;
+    }
 
     void Init(int level, const char *path = "../Log", const char *suffix = ".log", int maxQueueCapacity = 1000);
     void StartLogThread();
@@ -28,6 +30,9 @@ public:
     bool IsOpen();
 
 private:
+    Log();
+    ~Log();
+
     void AppendLogLevetitle_(int level);
 
     const char *path_;
@@ -52,13 +57,12 @@ private:
     static const int MAX_LINES = 500000;
     static const int LOG_NAME_LEN = 256;
 };
-extern Log& globalLog();
 
 #define LOG_BASE(level, format, ...) \
     do { \
-        if (globalLog().IsOpen() && globalLog().GetLevel() <= level) { \
-            globalLog().write(level, format, ##__VA_ARGS__); \
-            globalLog().flush(); \
+        if (Log::Instance().IsOpen() && Log::Instance().GetLevel() <= level) { \
+            Log::Instance().write(level, format, ##__VA_ARGS__); \
+            Log::Instance().flush(); \
         } \
     } while(0);
 

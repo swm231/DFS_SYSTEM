@@ -173,6 +173,7 @@ void HttpRequest::ParseHeadLine_(const std::string &Line){
 
     getline(lineStream, value);
     value.pop_back();
+    std::transform(value.begin(), value.end(), value.begin(), ::tolower);
 
     if(key == "Content-Length")
         BodyLen = std::stoi(value);

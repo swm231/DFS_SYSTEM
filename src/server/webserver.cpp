@@ -8,20 +8,19 @@ WebServer::WebServer(int port, int timeoutMS, const char *host, const char *user
          : port_(port), timeoutMS_(timeoutMS), stop_(false){
     HttpConn::srcDir_ = "../resources/";
 
-    if(OpenLog)
-        globalLog().Init(Loglevel);
-
     Response::CookieOut = cookieOut;
     srand(time(NULL));
-
     listenEvent_ = EPOLLRDHUP | EPOLLET;
     connEvent_ = EPOLLONESHOT | EPOLLRDHUP | EPOLLET;
+
+    if(OpenLog)
+        Log::Instance().Init(Loglevel);
+    SqlConnPool::Instance().Init(host, username, pwd, dbname);
 
     if(InitListenSocket() == false){
         LOG_ERROR("套接字初始化失败！服务器启动失败！");
         stop_ = true;
     }
-    globalSqlConnPool().Init(host, username, pwd, dbname);
 
     if(!stop_)
         LOG_INFO("============SERVER START============");
@@ -35,8 +34,8 @@ void WebServer::startUp(){
     struct epoll_event events[1024];
     while(!stop_){
         if(timeoutMS_ > 0)
-            timeMS = globalHeapTimer().GetNextTick();
-        int eventCnt = epoll_wait(globalEpoll().GetFd(), events, 1024, timeMS);
+            timeMS = HeapTimer::Instance().GetNextTick();
+        int eventCnt = epoll_wait(Epoll::Instance().GetFd(), events, 1024, timeMS);
         for(int i = 0; i < eventCnt; i ++){
             int fd = events[i].data.fd;
             uint32_t event = events[i].events;
@@ -66,24 +65,23 @@ void WebServer::dealNew_(){
     if(fd <= 0) return;
     users_[fd].Init(fd, addr);
     if(timeoutMS_ > 0)
-        globalHeapTimer().add(fd, timeoutMS_, std::bind(&WebServer::closeConn_, this, &users_[fd]));
-    globalEpoll().addFd(fd, connEvent_ | EPOLLIN);
-    setNonBlocking(fd);
+        HeapTimer::Instance().add(fd, timeoutMS_, std::bind(&WebServer::closeConn_, this, &users_[fd]));
 
+    Epoll::Instance().addFd(fd, connEvent_ | EPOLLIN);
+    setNonBlocking(fd);
 }
 void WebServer::closeConn_(HttpConn *client){
-    globalEpoll().delFd(client->GetFd());
+    Epoll::Instance().delFd(client->GetFd());
     client->Close();
-
 }
 
 // 分发工作
 void WebServer::dealRead_(HttpConn *client){
-    globalThreadPool().AddTask(std::bind(&WebServer::OnRead_, this, client));
+    ThreadPool::Instance().AddTask(std::bind(&WebServer::OnRead_, this, client));
     updateTimer_(client);
 }
 void WebServer::dealWrite_(HttpConn *client){
-    globalThreadPool().AddTask(std::bind(&WebServer::OnWrite_, this, client));
+    ThreadPool::Instance().AddTask(std::bind(&WebServer::OnWrite_, this, client));
     updateTimer_(client);
 }
 
@@ -91,27 +89,26 @@ void WebServer::dealWrite_(HttpConn *client){
 void WebServer::OnRead_(HttpConn *client){
     int ret = client->read_process();
     if(ret == 1)
-        globalEpoll().modFd(client->GetFd(), connEvent_ | EPOLLIN);
+        Epoll::Instance().modFd(client->GetFd(), connEvent_ | EPOLLIN);
     else if(ret == 2)
         closeConn_(client);
     else
-        globalEpoll().modFd(client->GetFd(), connEvent_ | EPOLLOUT);
+        Epoll::Instance().modFd(client->GetFd(), connEvent_ | EPOLLOUT);
 }
 // 0:发送完成 1:继续发送 2:关闭连接
 void WebServer::OnWrite_(HttpConn *client){
     int ret = client->write_process();
-    if(ret == 0){
-        globalEpoll().modFd(client->GetFd(), connEvent_ | EPOLLIN);
-    }
+    if(ret == 0)
+        Epoll::Instance().modFd(client->GetFd(), connEvent_ | EPOLLIN);
     else if(ret == 1)
-        globalEpoll().modFd(client->GetFd(), connEvent_ | EPOLLOUT);
+        Epoll::Instance().modFd(client->GetFd(), connEvent_ | EPOLLOUT);
     else
         closeConn_(client);
 }
 
 void WebServer::updateTimer_(HttpConn *client){
     if(timeoutMS_ > 0)
-        globalHeapTimer().update(client->GetFd(), timeoutMS_);
+        HeapTimer::Instance().update(client->GetFd(), timeoutMS_);
 }
 
 bool WebServer::InitListenSocket(){
@@ -155,7 +152,7 @@ bool WebServer::InitListenSocket(){
     }
 
     setNonBlocking(listenFd_);
-    globalEpoll().addFd(listenFd_, listenEvent_ | EPOLLIN);
+    Epoll::Instance().addFd(listenFd_, listenEvent_ | EPOLLIN);
 
     return true;
 }

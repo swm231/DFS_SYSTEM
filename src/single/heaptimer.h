@@ -25,8 +25,10 @@ struct TimerNode{
 // u的左儿子: u * 2 + 1 右儿子: u * 2 + 2 
 class HeapTimer{
 public:
-    HeapTimer(){ heap_.reserve(64); }
-    ~HeapTimer() { clear(); }
+    static HeapTimer &Instance(){
+        static HeapTimer instance;
+        return instance;
+    }
 
     void add(int id, int timeOut, const TimeoutCallBack &cb);
 
@@ -43,6 +45,9 @@ public:
     int GetNextTick();
 
 private:
+    HeapTimer(){ heap_.reserve(64); }
+    ~HeapTimer() { clear(); }
+
     void del_(size_t idx);
     void SwapNode_(size_t u, size_t v);
 

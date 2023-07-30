@@ -22,12 +22,14 @@ void HeapTimer::SwapNode_(size_t u, size_t v){
 
 // 把 u 节点向上调整到符合堆性质的位置
 void HeapTimer::siftup_(size_t idx){
+    if(idx == 0) return;
     size_t f = (idx - 1) / 2;
     while(f >= 0){
         if(heap_[f] < heap_[idx]) break;
         SwapNode_(f, idx);
         idx = f;
         f = (idx - 1) / 2;
+        if(idx == 0) break;
     }
 }
 

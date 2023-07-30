@@ -59,7 +59,7 @@ void Log::Init(int level = 1, const char *path, const char *suffix, int maxQueue
 }
 
 void Log::StartLogThread(){
-    globalLog().AsyncWrite();
+    Log::Instance().AsyncWrite();
 }
 
 void Log::AsyncWrite(){

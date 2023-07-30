@@ -6,9 +6,11 @@
 
 class Epoll{
 public:
-    Epoll(int maxEvent = 512);
-    ~Epoll();
-    
+    static Epoll &Instance(){
+        static Epoll instance;
+        return instance;
+    }
+
     int addFd(int fd, uint32_t events);
     int modFd(int fd, uint32_t events);
     int delFd(int fd);
@@ -18,6 +20,9 @@ public:
     }
 
 private:
+    Epoll(int maxEvent = 512);
+    ~Epoll();
+    
     int epfd_;
 };
 
