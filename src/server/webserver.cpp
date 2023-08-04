@@ -3,6 +3,7 @@
 int Response::CookieOut;
 char Message::CR[] = "\r";
 char Message::CRLF[] = "\r\n";
+std::atomic<int> ThreadPool::free_;
 WebServer::WebServer(int port, int timeoutMS, const char *host, const char *username, const char *pwd,
         const char *dbname, bool OpenLog, int Loglevel, int cookieOut)
          : port_(port), timeoutMS_(timeoutMS), stop_(false){
@@ -72,7 +73,7 @@ void WebServer::dealNew_(){
 }
 void WebServer::closeConn_(HttpConn *client){
     Epoll::Instance().delFd(client->GetFd());
-    client->Close();
+    users_.erase(client->GetFd());
 }
 
 // 分发工作

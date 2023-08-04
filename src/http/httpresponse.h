@@ -11,6 +11,7 @@
 
 #include "message.h"
 #include "../single/epoll.h"
+#include "../resources/html.h"
 
 class HttpResponse : public Response {
 public:

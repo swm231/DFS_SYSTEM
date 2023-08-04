@@ -2,9 +2,9 @@
 
 int main()
 {
-    WebServer server(80, 1000,
+    WebServer server(80, 60000,
             "8.130.86.160", "swm_231", "123456", "WebServer",
-            true, 1, 3600);
+            true, 0, 3600);
     server.startUp();
 }
 /*  端口号, timeout(ms), 

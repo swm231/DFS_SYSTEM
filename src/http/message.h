@@ -104,6 +104,7 @@ public:
 
     unsigned long long HasSentLen;
 
-    static const std::unordered_map<int, std::string> CODE_STATUS, CODE_PATH;
     static int CookieOut;
+    static const std::unordered_map<int, std::string> CODE_STATUS;
+    static const std::unordered_map<std::string, const char*> HTML_RESOURCE;
 };

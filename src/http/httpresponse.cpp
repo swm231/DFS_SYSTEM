@@ -8,10 +8,22 @@ const std::unordered_map<int, std::string> Response::CODE_STATUS = {
     { 404, "Not Found" },
 };
 
-const std::unordered_map<int, std::string> Response::CODE_PATH = {
-    { 400, "/400.html" },
-    { 403, "/403.html" },
-    { 404, "/404.html" },
+const std::unordered_map<std::string, const char*> Response::HTML_RESOURCE = {
+    { "400", _400},    { "/400", _400},
+    { "403", _403},    { "/403", _403},
+    { "404", _404},    { "/404", _404},
+    { "head", _head},    { "/head", _head},
+    { "head_", _head_},    { "/head_", _head_},
+    { "index", _index},    { "/index", _index},
+    { "login", _login},    { "/login", _login},
+    { "namerr", _namerr},    { "/namerr", _namerr},
+    { "pwderr", _pwderr},    { "/pwderr", _pwderr},
+    { "public", _public},    { "/public", _public},
+    { "private", _private},    { "/private", _private},
+    { "register", _register},    { "/register", _register},
+    { "title", _title},    { "/title", _title},
+    { "welcome", _welcome},    { "/welcome", _welcome},
+    { "listend", _listend},    { "/listend", _listend},
 };
 
 extern int _cookieOut;
@@ -86,6 +98,7 @@ int HttpResponse::process(){
             }
         }
     }
+    return 2;
 }
 
 void HttpResponse::Parse_(){
@@ -190,32 +203,16 @@ void HttpResponse::GetHtmlPage_(){
     }
     GetFileListPage_();
 }
-void HttpResponse::AddFileStream_(const std::string &fileName){
-    std::ifstream fileListStream("../resources/" + fileName, std::ios::in);
-    std::string tempLine;
-
-    while(getline(fileListStream, tempLine))
-        BodyMsg.Append(tempLine + "\n");
-}
 
 void HttpResponse::GetFileListPage_(){
     std::vector<std::string> fileVec;
-    std::ifstream fileListStream;
     if(resPath_ == "/public")
         GetFileVec_("../user_resources/public", fileVec),
-        fileListStream.open("../resources/public", std::ios::in);
+        AddFileStream_("public");
     else if(resPath_ == "/private")
         GetFileVec_("../user_resources/private/" + username_, fileVec),
-        fileListStream.open("../resources/private", std::ios::in);
+        AddFileStream_("private");
 
-    std::string tempLine;
-
-    while(true){
-        getline(fileListStream, tempLine);
-        if(tempLine == "<!-- FileList -->")
-            break;
-        BodyMsg.Append(tempLine + "\n");
-    }
     for(auto &filename : fileVec){
         BodyMsg.Append("            <tr><td>" + filename +
                     "</td> <td><a href=\"" + resPath_ + "/download/" + filename +
@@ -223,8 +220,7 @@ void HttpResponse::GetFileListPage_(){
                     "\" onclick=\"return confirmDelete();\">删除</a></td></tr>" + "\n");
     }
 
-    while(getline(fileListStream, tempLine))
-        BodyMsg.Append(tempLine + "\n");
+    AddFileStream_("listend");
 }
 void HttpResponse::GetFileVec_(const std::string &path, std::vector<std::string> &fileList){
     DIR *dir;
@@ -242,4 +238,11 @@ void HttpResponse::GetFileVec_(const std::string &path, std::vector<std::string>
             fileList.pop_back();
         }
     }
+}
+
+void HttpResponse::AddFileStream_(const std::string &fileName){
+    if(HTML_RESOURCE.count(fileName) == 0)
+        return;
+    BodyMsg.Append(HTML_RESOURCE.find(fileName)->second);
+    BodyMsg.Append("\n");
 }

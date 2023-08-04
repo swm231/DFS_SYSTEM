@@ -1,6 +1,6 @@
 #include "log.h"
 
-Log::Log(): lineCount_(false), isAsync_(false), writeThread_(nullptr), toDay_(0), fp_(nullptr){}
+Log::Log(): lineCount_(0), isAsync_(false), writeThread_(nullptr), toDay_(0), fp_(nullptr), isOpen_(false){}
 Log::~Log(){
     if(writeThread_ && writeThread_->joinable()){
         while(!deque_->empty())
@@ -78,7 +78,7 @@ void Log::write(int level, const char *format, ...){
     struct tm t = *sysTime;
     va_list vaList;
 
-    if(toDay_ == t.tm_mday || (lineCount_ && lineCount_ % MAX_LINES == 0)){
+    if(toDay_ != t.tm_mday || (lineCount_ && lineCount_ % MAX_LINES == 0)){
         char newFile[LOG_NAME_LEN];
         char tail[36] = {0};
         snprintf(tail, 36, "%04d_%02d_%02d", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
@@ -112,8 +112,10 @@ void Log::write(int level, const char *format, ...){
         buff_.HasWritten(m);
         buff_.Append("\n\0", 2);
 
-        if(isAsync_ && deque_ && !deque_->full())  
+        if(isAsync_ && deque_ && !deque_->full())  {
+            flush();
             deque_->push_back(buff_.UnhandleToStr());
+        }
         else
             fputs(buff_.Peek(), fp_);
         buff_.AddHandledAll();

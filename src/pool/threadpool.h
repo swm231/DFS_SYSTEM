@@ -33,6 +33,7 @@ public:
 
 private:
     ThreadPool(int threadNum = 4) : stop_(false){
+        free_ = threadNum;
         for(int i = 0; i < threadNum; i++){
             workers_.emplace_back([this, i]{
                 for(;;){
@@ -45,9 +46,11 @@ private:
                         task = std::move(tasks_.front());
                         tasks_.pop();
                     }
-                    LOG_DEBUG("[thread] %d号线程收到工作中...", i);
+                    free_ --;
+                    LOG_DEBUG("[thread] %d号线程收到工作中...空闲线程数:%d", i, (int)free_);
                     task();
-                    LOG_DEBUG("[thread] %d号线程工作已完成!!!", i);
+                    free_ ++;
+                    LOG_DEBUG("[thread] %d号线程工作已完成!!!空闲线程数:%d", i, (int)free_);
                 }
             });
         }
@@ -68,4 +71,5 @@ private:
     std::vector<std::thread> workers_;
     bool stop_;
 
+    static std::atomic<int> free_;
 };
