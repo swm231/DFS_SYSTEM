@@ -30,6 +30,8 @@ public:
         return instance;
     }
 
+    void Init(){ isOpen_ = true; }
+
     void add(int id, int timeOut, const TimeoutCallBack &cb);
 
     void update(int id, int timeout);
@@ -45,7 +47,7 @@ public:
     int GetNextTick();
 
 private:
-    HeapTimer(){ heap_.reserve(64); }
+    HeapTimer() : isOpen_(false){ heap_.reserve(64); }
     ~HeapTimer() { clear(); }
 
     void del_(size_t idx);
@@ -54,6 +56,7 @@ private:
     void siftup_(size_t idx);
     bool siftdown_(size_t idx, size_t n);
 
+    bool isOpen_;
     // 用数组模拟堆
     std::vector<TimerNode> heap_;
     // 根据 id 寻找节点在堆中的位置

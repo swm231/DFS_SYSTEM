@@ -173,7 +173,6 @@ void HttpRequest::ParseHeadLine_(const std::string &Line){
 
     getline(lineStream, value);
     value.pop_back();
-    std::transform(value.begin(), value.end(), value.begin(), ::tolower);
 
     if(key == "Content-Length")
         BodyLen = std::stoi(value);
@@ -207,7 +206,7 @@ void HttpRequest::ParseCookie_(const std::string &Line){
 
 int HttpRequest::ParseFile_(){
     std::string::size_type endIndex;
-    const char *lineEnd; 
+    const char *lineEnd;
     std::string strLine;
 
     // 边界首
@@ -222,7 +221,7 @@ int HttpRequest::ParseFile_(){
             RecvMsg.AddHandled(lineEnd - RecvMsg.Peek() + 2);
         }
         else
-            return 0;
+            return 2;
     }
 
     // 文件名
@@ -420,6 +419,6 @@ void HttpRequest::Append(const char *str, size_t len){
 
 bool HttpRequest::IsKeepAlice() const{
     if(MsgHeader.count("Connection") == 1)
-        return MsgHeader.find("Connection")->second == "keep-alive" && Version == "HTTP/1.1";
+        return MsgHeader.find("Connection")->second == "keep-alive" || MsgHeader.find("Connection")->second == "Keep-Alive" || Version == "HTTP/1.1";
     return false;
 }

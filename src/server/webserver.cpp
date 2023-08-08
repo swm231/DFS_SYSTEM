@@ -146,7 +146,7 @@ bool WebServer::InitListenSocket(){
         return false;
     }
 
-    ret = listen(listenFd_, 10);
+    ret = listen(listenFd_, 4096);
     if(ret == -1){
         LOG_ERROR("[socket] listen ERROR");
         return false;
