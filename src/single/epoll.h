@@ -4,6 +4,8 @@
 #include <sys/epoll.h>
 #include <sys/fcntl.h>
 
+#include "../log/log.h"
+
 class Epoll{
 public:
     static Epoll &Instance(){

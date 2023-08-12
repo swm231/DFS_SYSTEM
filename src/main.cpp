@@ -2,10 +2,11 @@
 
 int main()
 {
-    WebServer server(8888, 10000,
+    WebServer server(8888, 60000,
             "8.130.86.160", "swm_231", "123456", "WebServer",
             true, 0, 3600);
     server.startUp();
+    return 0;
 }
 /*  端口号, timeout(ms) -1表示关闭tiemr, 
     mysql(username, passward, dbname) 

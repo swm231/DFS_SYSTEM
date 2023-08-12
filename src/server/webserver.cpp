@@ -4,9 +4,13 @@ int Response::CookieOut;
 char Message::CR[] = "\r";
 char Message::CRLF[] = "\r\n";
 std::atomic<int> ThreadPool::free_;
+volatile sig_atomic_t WebServer::stop_;
 WebServer::WebServer(int port, int timeoutMS, const char *host, const char *username, const char *pwd,
         const char *dbname, bool OpenLog, int Loglevel, int cookieOut)
-         : port_(port), timeoutMS_(timeoutMS), stop_(false){
+         : port_(port), timeoutMS_(timeoutMS){
+    WebServer::stop_ = 0;
+    signal(SIGINT, WebServer::CloseServer);
+
     HttpConn::srcDir_ = "../resources/";
 
     Response::CookieOut = cookieOut;
@@ -33,7 +37,7 @@ WebServer::~WebServer(){
 void WebServer::startUp(){
     int timeMS = -1;
     struct epoll_event events[1024];
-    while(!stop_){
+    while(stop_ != 1){
         if(timeoutMS_ > 0)
             timeMS = HeapTimer::Instance().GetNextTick();
         int eventCnt = epoll_wait(Epoll::Instance().GetFd(), events, 1024, timeMS);
@@ -72,8 +76,9 @@ void WebServer::dealNew_(){
     setNonBlocking(fd);
 }
 void WebServer::closeConn_(HttpConn *client){
-    Epoll::Instance().delFd(client->GetFd());
-    users_.erase(client->GetFd());
+    int fd = client->GetFd();
+    Epoll::Instance().delFd(fd);
+    users_.erase(fd);
 }
 
 // 分发工作
@@ -115,6 +120,8 @@ void WebServer::updateTimer_(HttpConn *client){
 bool WebServer::InitListenSocket(){
     int ret;
     struct linger optLinger;
+    optLinger.l_linger = 0;
+    optLinger.l_onoff = 0;
 
     struct sockaddr_in listenAddr;
     listenAddr.sin_family = AF_INET;
@@ -156,4 +163,10 @@ bool WebServer::InitListenSocket(){
     Epoll::Instance().addFd(listenFd_, listenEvent_ | EPOLLIN);
 
     return true;
+}
+
+void WebServer::CloseServer(int signum){
+    stop_ = 1;
+    ThreadPool::Instance().Shutdown();
+    SqlConnPool::Instance().ClosePool();
 }

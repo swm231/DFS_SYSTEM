@@ -1,25 +1,32 @@
-cmake_minimum_required (VERSION 2.8)
+cmake_minimum_required(VERSION 2.8)
 
-project (ftp)
+project(ftp)
 
-set (EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 
 file(GLOB_RECURSE native_srcs src/*.cpp)
 
-# add_library(Server SHARED ${native_srcs})
-
-target_link_libraries(main ${CMAKE_THREAD_LIBS_INIT})
-
 add_executable(main ${native_srcs})
 
+# Find Threads package
 find_package(Threads)
 
-# thread
-target_link_libraries(main ${CMAKE_THREAD_LIBS_INIT})
-
-# MySql
+# Link with MySQL client library
 target_link_libraries(main mysqlclient)
 
-# MD5
+# Link with OpenSSL libraries
 find_package(OpenSSL REQUIRED)
 target_link_libraries(main OpenSSL::SSL OpenSSL::Crypto)
+
+# Link with pthread library
+target_link_libraries(main Threads::Threads)
+
+# Create a custom target for running Valgrind
+find_program(VALGRIND "valgrind")
+if(VALGRIND)
+    add_custom_target(valgrind
+        COMMAND ${VALGRIND} --leak-check=full --show-leak-kinds=all ./bin/main
+        DEPENDS main
+        COMMENT "Running Valgrind"
+    )
+endif()

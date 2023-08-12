@@ -31,6 +31,16 @@ public:
         return task_ptr->get_future();
     }
 
+    void Shutdown(){
+        {
+            std::unique_lock<std::mutex> locker(mtx_);
+            stop_ = true;
+        }
+        cv_.notify_all();
+        for(auto &worker : workers_)
+            worker.join();
+    }
+
 private:
     ThreadPool(int threadNum = 4) : stop_(false){
         free_ = threadNum;
@@ -54,15 +64,6 @@ private:
                 }
             });
         }
-    }
-    ~ThreadPool(){
-        {
-            std::unique_lock<std::mutex> locker(mtx_);
-            stop_ = true;
-        }
-        cv_.notify_all();
-        for(auto &worker : workers_)
-            worker.join();
     }
 
     std::mutex mtx_;

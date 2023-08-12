@@ -60,5 +60,7 @@ int HttpConn::write_process(){
 }
 
 int HttpConn::GetFd() const{
+    if(isClose_)
+        return -1;
     return fd_;
 }

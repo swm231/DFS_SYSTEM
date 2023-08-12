@@ -34,6 +34,7 @@ private:
     std::queue<MYSQL*> connQue_;
     std::mutex mtx_;
     sem_t semId_;
+    bool stop_;
 
     std::unique_ptr<std::thread> FreshenThread_;
     void Freshen_();

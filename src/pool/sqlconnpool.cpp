@@ -1,9 +1,8 @@
 #include "sqlconnpool.h"
 
-SqlConnPool::SqlConnPool() : MAX_CONN_(0), FreshenThread_(nullptr){}
-SqlConnPool::~SqlConnPool(){
-    ClosePool();
-}
+SqlConnPool::SqlConnPool() : MAX_CONN_(0), FreshenThread_(nullptr), stop_(true){}
+SqlConnPool::~SqlConnPool(){}
+
 void SqlConnPool::Init(const char *host, const char *user, 
         const char *pwd, const char *dbName, int connSize){
     for(int i = 0; i < connSize; i++){
@@ -23,15 +22,19 @@ void SqlConnPool::Init(const char *host, const char *user,
     MAX_CONN_ = connQue_.size();
     sem_init(&semId_, 0, connQue_.size());
     FreshenThread_ = std::make_unique<std::thread>(&SqlConnPool::StartFresh, this);
+    stop_ = false;
 }
 void SqlConnPool::ClosePool(){
     std::lock_guard<std::mutex> locker(mtx_);
+    stop_ = true;
+    MAX_CONN_ = 0;
     while(!connQue_.empty()){
         MYSQL *it = connQue_.front();
         connQue_.pop();
         mysql_close(it);
     }
-    FreshenThread_->join();
+    if(FreshenThread_->joinable())
+        FreshenThread_->join();
 }
 
 MYSQL *SqlConnPool::GetConn(){
@@ -57,8 +60,15 @@ void SqlConnPool::StartFresh(){
 }
 
 void SqlConnPool::Freshen_(){
+    size_t Waittime = 0;
     while(true){
-        std::this_thread::sleep_for(std::chrono::seconds(28000));
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        if(stop_)
+            break;
+        Waittime += 2;
+        if(Waittime < 28000)
+            continue;
+        Waittime = 0;
         LOG_INFO("[sqlpool] 刷新连接池");
         std::lock_guard<std::mutex> locker(mtx_);
         for(int i = 0; i < MAX_CONN_; i++){

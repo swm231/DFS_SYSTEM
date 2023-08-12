@@ -28,7 +28,7 @@ const std::unordered_map<std::string, const char*> Response::HTML_RESOURCE = {
 
 extern int _cookieOut;
 
-HttpResponse::HttpResponse() : code_(-1), path_(""), resource_(""), resPath_(""), isKeepAlive_(false){}
+HttpResponse::HttpResponse() : code_(-1), path_(""), resource_(""), resPath_(""), isKeepAlive_(false), fileMsgFd(-1){}
 
 HttpResponse::~HttpResponse(){}
 
@@ -238,6 +238,7 @@ void HttpResponse::GetFileVec_(const std::string &path, std::vector<std::string>
             fileList.pop_back();
         }
     }
+    closedir(dir);
 }
 
 void HttpResponse::AddFileStream_(const std::string &fileName){
