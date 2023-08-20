@@ -12,7 +12,7 @@ int Epoll::addFd(int fd, uint32_t events){
 
     int ret = epoll_ctl(epfd_, EPOLL_CTL_ADD, fd, &event);
     if(ret < 0)
-        LOG_ERROR("[epoll] EPOLL_CTL_ADD ERROR!");
+        LOG_ERROR("[epoll] EPOLL_CTL_ADD ERROR! errno:%d", errno);
     return 0;
 }
 
@@ -23,14 +23,15 @@ int Epoll::modFd(int fd, uint32_t events){
 
     int ret = epoll_ctl(epfd_, EPOLL_CTL_MOD, fd, &event);
     if(ret < 0)
-        LOG_ERROR("[epoll] EPOLL_CTL_MOD ERROR!");
+        LOG_ERROR("[epoll] EPOLL_CTL_MOD ERROR! errno:%d", errno);
     return 0;
 }
 
 int Epoll::delFd(int fd){
     int ret = epoll_ctl(epfd_, EPOLL_CTL_DEL, fd, nullptr);
-    if(ret < 0)
-        LOG_ERROR("[epoll] EPOLL_CTL_DEL ERROR!");
+    if(ret < 0){
+        LOG_ERROR("[epoll] EPOLL_CTL_DEL ERROR! errno:%d", errno);
+    }
     return 0;
 }
 

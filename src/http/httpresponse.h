@@ -15,17 +15,12 @@
 
 class HttpResponse : public Response {
 public:
-    HttpResponse();
+    HttpResponse(HttpMessage *);
     ~HttpResponse();
 
-    void Init(const std::string &srcDir, const std::string &resDir, const std::string action, const std::string &resource,
-            const std::string &username, int isSetCookie, const std::string &cookie, bool isKeepAlice, int code);
+    void Init();
     void Close();
     int process();
-
-    bool IsKeepAlice() const{
-        return isKeepAlive_;
-    }
 
 private:
     void Parse_();
@@ -33,25 +28,23 @@ private:
     void AddStateLine_();
     void AddHeader_();
     void AddContent_();
-    void AddFileStream_(const std::string &fileName);
+    void AddFileStream_(HTML_ENUM);
 
     std::string GetFileType_();
     void GetFileListPage_();
     void GetFileVec_(const std::string &path, std::vector<std::string> &fileList);
     void GetHtmlPage_();
 
-    int code_;
-    bool isKeepAlive_;
-
-    std::string path_;
-    std::string resource_;
-    std::string resPath_;
-    std::string action_;
-
     struct stat fileSata_;
     int fileMsgFd;
 
-    std::string username_;
-    std::string cookie_;
-    int isSetCookie_;
+    Buffer beforeBodyMsg;
+    int beforeBodyMsgLen;
+
+    Buffer BodyMsg;
+    unsigned long long BodyMsgLen;
+
+    unsigned long long HasSentLen;
+
+    HttpMessage *Message_;
 };

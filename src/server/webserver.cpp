@@ -15,7 +15,7 @@ WebServer::WebServer(int port, int timeoutMS, const char *host, const char *user
 
     Response::CookieOut = cookieOut;
     srand(time(NULL));
-    listenEvent_ = EPOLLRDHUP | EPOLLET;
+    listenEvent_ = EPOLLRDHUP;
     connEvent_ = EPOLLONESHOT | EPOLLRDHUP | EPOLLET;
 
     if(OpenLog)
@@ -76,17 +76,20 @@ void WebServer::dealNew_(){
     setNonBlocking(fd);
 }
 void WebServer::closeConn_(HttpConn *client){
-    int fd = client->GetFd();
-    Epoll::Instance().delFd(fd);
-    users_.erase(fd);
+    if(client->isClose() == false){
+        Epoll::Instance().delFd(client->GetFd());
+        client->Close();
+    }
 }
 
 // 分发工作
 void WebServer::dealRead_(HttpConn *client){
+    LOG_DEBUG("[server] inRead");
     ThreadPool::Instance().AddTask(std::bind(&WebServer::OnRead_, this, client));
     updateTimer_(client);
 }
 void WebServer::dealWrite_(HttpConn *client){
+    LOG_DEBUG("[server] inWrite");
     ThreadPool::Instance().AddTask(std::bind(&WebServer::OnWrite_, this, client));
     updateTimer_(client);
 }

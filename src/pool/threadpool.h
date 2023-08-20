@@ -65,6 +65,7 @@ private:
             });
         }
     }
+    ~ThreadPool(){}
 
     std::mutex mtx_;
     std::condition_variable cv_;

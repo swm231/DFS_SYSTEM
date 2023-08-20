@@ -19,7 +19,7 @@ enum MSGSTATUS{
     HANDLE_HEAD,
     HANDLE_BODY,
     HANDLE_COMPLATE,
-    HANDLE_ERROE,
+    HANDLE_ERROR,
 };
 
 // 表示消息体类型
@@ -37,74 +37,106 @@ enum FILEMSGESTATUS{
     FILE_COMPLATE
 };
 
+enum METHOD{
+    GET,
+    POST,
+    METHOD_OTHER,
+};
+
+enum PATH{
+    ROOT,
+    PUBLIC,
+    PRIVATE,
+    LOGIN,
+    REGISTER,
+    LOGOUT,
+    WELCOME,
+    NAMERR,
+    PWDERR,
+    PATH_OTHER,
+};
+
+enum BEHAVIOR{
+    UPLOAD,
+    DOWNLOAD,
+    DELETE,
+    BEHAVIOR_OTHER,
+};
+
+enum VERSION{
+    _0_9,
+    _1_0,
+    _1_1,
+    _2_0,
+    VERSION_OTHER,
+};
+
+enum HTML_ENUM{
+    _404_, _403_, _400_, _HEAD, _HEAD_, _INDEX, _LOGIN, _LOGOUT, _NAMERR,
+     _PWDERR, _PUBLIC, _PRIVATE, _REGISTER, _TITLE, _WELCOME, _LISTEND 
+};
+
 class Message{
 public:
-    Message() : HeadStatus(HANDLE_INIT), BodySatus(EMPTY_TYPE), SaveErrno(0){}
+    Message() : HeadStatus(HANDLE_INIT), BodySatus(EMPTY_TYPE){}
 
 public:
-    int fd_;
-    int SaveErrno;
-
     MSGSTATUS HeadStatus;
     MSGBODYTYPE BodySatus;
 
-    std::unordered_map<std::string, std::string> MsgHeader;
     static char CR[];
     static char CRLF[];
 };
+
 
 class Request : public Message{
 public:
     Request() : Message(){}
 
-    void setRequestLine(const std::string &Line){
-        std::istringstream lineStream(Line);
-        lineStream >> Method;
-        lineStream >> Resource;
-        lineStream >> Version;
-
-        if(Resource == "/")
-            Resource = "/index";
-    }
-
 public:
-    Buffer RecvMsg;
-
-    std::string Method;
-    std::string Resource;
-    std::string Version;
-
-    std::string recvFileName;
-
-    unsigned int BodyLen;
-
     FILEMSGESTATUS FileStatus;
-    static const std::unordered_set<std::string> DEFAULT_HTML;
+    
+    static const std::unordered_map<std::string, BEHAVIOR> DEFAULT_BEHAVIOR;
+    static const std::unordered_map<std::string, PATH> DEFAULT_PATH;
 };
 
 class Response : public Message{
 public:
-    Response() : Message(), HasSentLen(0){}
+    Response() : Message(){}
 
 public:
-    // 状态行
-    std::string Version = "HTTP/1.1";
-    std::string StatusCode;
-    std::string StatusDes;
-
-    std::string bodyFileName;
-
-    Buffer beforeBodyMsg;
-    int beforeBodyMsgLen;
-
-    Buffer BodyMsg;
-    unsigned long long BodyMsgLen;
-
-    int FileMsgFd;
-
-    unsigned long long HasSentLen;
-
     static int CookieOut;
     static const std::unordered_map<int, std::string> CODE_STATUS;
-    static const std::unordered_map<std::string, const char*> HTML_RESOURCE;
+    static const std::unordered_map<HTML_ENUM, const char*> HTML_RESOURCE;
+};
+
+class HttpMessage{
+public:
+    int fd_;
+    int SaveErrno;
+
+    HttpMessage(){}
+    void Init(){
+        Method = METHOD::METHOD_OTHER, Path = PATH::PATH_OTHER, 
+        Behavior = BEHAVIOR::BEHAVIOR_OTHER, Version = VERSION::VERSION_OTHER;
+        isSetCookie = false;
+        UserName = PassWord = FileName = "";
+        MsgHeader.clear();
+        code = 200;
+    }
+
+    METHOD Method;
+    PATH Path;
+    BEHAVIOR Behavior;
+    VERSION Version;
+
+    // true表示用用户名密码登录，否表示用cookie登录
+    bool isSetCookie;
+
+    int code;
+    std::string UserName, PassWord;
+    std::string FileName;
+    std::string Cookie;
+
+    std::unordered_map<std::string, std::string> MsgHeader;
 };

@@ -78,7 +78,7 @@ void Log::write(int level, const char *format, ...){
     struct tm t = *sysTime;
     va_list vaList;
 
-    if(toDay_ != t.tm_mday || (lineCount_ && lineCount_ % MAX_LINES == 0)){
+    if(toDay_ != t.tm_mday || (lineCount_ > MAX_LINES)){
         char newFile[LOG_NAME_LEN];
         char tail[36] = {0};
         snprintf(tail, 36, "%04d_%02d_%02d", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);

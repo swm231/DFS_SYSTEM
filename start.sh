@@ -5,4 +5,4 @@ cd build
 rm * -r
 cmake ..
 make
-../bin/main
+../bin/start.sh

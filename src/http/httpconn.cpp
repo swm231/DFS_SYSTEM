@@ -4,46 +4,45 @@ extern Epoll& globalEpoll();
 std::atomic<int> HttpConn::userCount;
 std::string HttpConn::srcDir_;
 
-HttpConn::HttpConn() : fd_(-1), addr_({0}), isClose_(true){}
+HttpConn::HttpConn() : addr_({0}), isClose_(true), Message_(new HttpMessage()), 
+    request_(Message_), response_(Message_){}
 HttpConn::~HttpConn(){
     Close();
+    delete Message_;
 }
 
 void HttpConn::Init(int fd, const sockaddr_in &addr){
     userCount++;
     addr_ = addr;
-    fd_ = fd;
+    Message_->fd_ = fd;
     isClose_ = false;
-    request_.Init(fd);
-    response_.fd_ = fd;
+    request_.Init();
 
     LOG_INFO("[http] 新的连接 ip:%s port:%d fd:%d 在线人数:%d", inet_ntoa(addr.sin_addr), ntohs(addr.sin_port), fd, (int)userCount);
 }
 
 void HttpConn::Close(){
     if(isClose_ == false){
+        LOG_INFO("[http] 连接关闭 fd:%d 在线人数:%d", Message_->fd_, (int)userCount);
+
         isClose_ = true;
         userCount--;
-        close(fd_);
         request_.Close();
         response_.Close();
-        
-        LOG_INFO("[http] 连接关闭 fd:%d 在线人数:%d", fd_, (int)userCount);
+        close(Message_->fd_);
     }
+}
+bool HttpConn::isClose(){
+    return isClose_;
 }
 
 // 0:解析正确 1:继续监听 2:关闭连接
 int HttpConn::read_process(){
     int ret = request_.process();
     if(ret == 0)
-        response_.Init(srcDir_, request_.Get_resDir(), request_.Get_action(), request_.Resource, request_.Get_username(), request_.isSetCookie(), 
-            request_.Get_cookie(), request_.IsKeepAlice(), request_.Get_code() == -1 ? 200 : request_.Get_code());
+        response_.Init();
     else
         return ret;
-
-    request_.Init(fd_);
-    request_.RecvMsg.AddHandledAll();
-
     return ret;
 }
 
@@ -51,7 +50,8 @@ int HttpConn::read_process(){
 int HttpConn::write_process(){
     int ret = response_.process();
     if(ret == 0){
-        if(response_.IsKeepAlice())
+        request_.Init();
+        if(request_.IsKeepAlice())
             return 0;
         else
             return 2;
@@ -62,5 +62,5 @@ int HttpConn::write_process(){
 int HttpConn::GetFd() const{
     if(isClose_)
         return -1;
-    return fd_;
+    return Message_->fd_;
 }
