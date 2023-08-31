@@ -147,7 +147,7 @@ void TaskNode::ParseBody_(){
                     saveLen = lineEnd - recvBuff.Peek();
                 }
             }
-            fwrite(recvBuff.Peek(), sizeof(char), saveLen, fp);
+            size_t err = fwrite(recvBuff.Peek(), sizeof(char), saveLen, fp);
             recvBuff.AddHandled(saveLen);
         }
     }
