@@ -7,7 +7,7 @@
 #include "httprequest.h"
 #include "httpresponse.h"
 
-class HttpConn: public FdNode{
+class HttpConn: public BaseNode{
 public:
     HttpConn();
     ~HttpConn();

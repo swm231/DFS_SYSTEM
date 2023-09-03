@@ -73,13 +73,22 @@ void HeapTimer::update(int id, int timeout){
     siftdown_(ref_[id], heap_.size());
 }
 
-// 关闭连接
+// 关闭连接(use callback)
 void HeapTimer::close(int id){
     if(heap_.empty() || ref_.count(id) == 0)
         return;
     size_t i = ref_[id];
     TimerNode node = heap_[i];
     node.cb();
+    del_(i);
+}
+
+// 关闭连接(no use callback)
+void HeapTimer::erase(int id){
+    if(heap_.empty() || ref_.count(id) == 0)
+        return;
+    size_t i = ref_[id];
+    TimerNode node = heap_[i];
     del_(i);
 }
 

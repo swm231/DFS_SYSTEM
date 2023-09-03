@@ -2,11 +2,6 @@
 
 std::atomic<int> ThreadPool::free_;
 
-uint32_t Conf::bind_addr, Conf::cookieOut;
-uint16_t Conf::http_port, Conf::task_port;
-std::string Conf::mysql_host, Conf::mysql_user, Conf::mysql_pwd, Conf::mysql_database;
-
-
 TrackerServer::TrackerServer(){
     
     stop_ = false;
@@ -16,6 +11,7 @@ TrackerServer::TrackerServer(){
     Log::Instance().Init(0);
 
     Conf::Instance().Parse();
+    HeapTimer::Instance().Init();
 
     SqlConnPool::Instance().Init(Conf::mysql_host.c_str(), 
         Conf::mysql_user.c_str(), Conf::mysql_pwd.c_str(), Conf::mysql_database.c_str());
@@ -32,16 +28,19 @@ TrackerServer::~TrackerServer(){
 
 void TrackerServer::StartUp(){
     struct epoll_event events[1024];
+    int timeMS = -1;
     while(stop_ == false){
-        int eventCnt = epoll_wait(Epoll::Instance().GetFd(), events, 1024, -1);
+        if(Conf::timeOut > 0)
+            timeMS = HeapTimer::Instance().GetNextTick();
+        int eventCnt = epoll_wait(Epoll::Instance().GetFd(), events, 1024, timeMS);
         for(int i = 0; i < eventCnt; i++){
             uint32_t event = events[i].events;
             if(event & EPOLLIN)
-                DealRead_(static_cast<FdNode*>(events[i].data.ptr));
+                DealRead_(static_cast<BaseNode*>(events[i].data.ptr));
             else if(event & EPOLLOUT)
-                DealWrite_(static_cast<FdNode*>(events[i].data.ptr));
+                DealWrite_(static_cast<BaseNode*>(events[i].data.ptr));
             else if(event & (EPOLLRDHUP | EPOLLHUP | EPOLLERR))
-                DealClose_(static_cast<FdNode*>(events[i].data.ptr));
+                DealClose_(static_cast<BaseNode*>(events[i].data.ptr));
             else
                 LOG_ERROR("[epoll] Unexpected Event!");
         }
@@ -51,14 +50,14 @@ void TrackerServer::CloseServer(int signum){
     stop_ = true;
 }
 
-void TrackerServer::DealRead_(FdNode *ptr){
+void TrackerServer::DealRead_(BaseNode *ptr){
     ThreadPool::Instance().AddTask(std::bind(&TrackerServer::OnRead_, this, ptr));
 }
-void TrackerServer::DealWrite_(FdNode *ptr){
+void TrackerServer::DealWrite_(BaseNode *ptr){
     ThreadPool::Instance().AddTask(std::bind(&TrackerServer::OnWrite_, this, ptr));
 }
 
-void TrackerServer::OnRead_(FdNode *ptr){
+void TrackerServer::OnRead_(BaseNode *ptr){
     int ret = ptr->ReadProcess();
     if(ret == 0)
         Epoll::Instance().modFd(ptr->fd, ptr, Epoll::connEvent_ | EPOLLOUT);
@@ -67,7 +66,7 @@ void TrackerServer::OnRead_(FdNode *ptr){
     else if(ret == 2)
         DealClose_(ptr);
 }
-void TrackerServer::OnWrite_(FdNode *ptr){
+void TrackerServer::OnWrite_(BaseNode *ptr){
     int ret = ptr->WriteProcess();
     if(ret == 0)
         Epoll::Instance().modFd(ptr->fd, ptr, Epoll::connEvent_ | EPOLLIN);
@@ -76,7 +75,7 @@ void TrackerServer::OnWrite_(FdNode *ptr){
     else if(ret == 2)
         DealClose_(ptr);
 }
-void TrackerServer::DealClose_(FdNode *ptr){
+void TrackerServer::DealClose_(BaseNode *ptr){
     Epoll::Instance().delFd(ptr->fd);
     delete ptr;
 }

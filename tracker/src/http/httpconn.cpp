@@ -2,11 +2,15 @@
 extern Epoll& globalEpoll();
 
 std::atomic<int> HttpConn::userCount;
-std::string HttpConn::srcDir_;
+std::unordered_set<std::string> HttpMessage::onlieUser; 
+std::unordered_map<std::string, std::unordered_map<int, int> > HttpMessage::userServer;
 
 HttpConn::HttpConn() : addr_({0}), isClose_(true), Message_(new HttpMessage()), 
     request_(Message_), response_(Message_){}
 HttpConn::~HttpConn(){
+    if(Message_->UserName != "")
+        HttpMessage::onlieUser.erase(Message_->UserName);
+    HeapTimer::Instance().erase(fd);
     Close();
     delete Message_;
 }
@@ -31,8 +35,6 @@ void HttpConn::Close(){
         response_.Close();
         close(Message_->fd_);
         Message_->fd_ = -1;
-        
-        // 如果登录了，删除文件信息
     }
 }
 bool HttpConn::isClose(){
@@ -41,7 +43,10 @@ bool HttpConn::isClose(){
 
 // 0:解析正确 1:继续监听 2:关闭连接
 int HttpConn::ReadProcess(){
+    HeapTimer::Instance().update(fd, Conf::timeOut);
     int ret = request_.process();
+    if(request_.GetLogStatus() == 0 && HttpMessage::userServer.count(Message_->UserName) == 0)
+        addUserServer();
     if(ret == 0)
         response_.Init();
     else
@@ -51,19 +56,30 @@ int HttpConn::ReadProcess(){
 
 // 0:发送完成 1:继续发送 2:关闭连接
 int HttpConn::WriteProcess(){
+    HeapTimer::Instance().update(fd, Conf::timeOut);
     int ret = response_.process();
     if(ret == 0){
-        request_.Init();
-        if(request_.IsKeepAlice())
+        if(request_.IsKeepAlice()){
+            request_.Init();
             return 0;
+        }
         else
             return 2;
     }
     return ret;
 }
 
-int HttpConn::GetFd() const{
-    if(isClose_)
-        return -1;
-    return Message_->fd_;
+void HttpConn::addUserServer(){
+    HttpMessage::onlieUser.insert(Message_->UserName);
+    // 用户信息还没同步完，因此信息没有删除。此时登录不需要添加服务器信息
+    if(HttpMessage::userServer.count(Message_->UserName) != 0)
+        return;
+    std::string group_ = ConsistentHash::Instance().GetGroup(Message_->UserName);
+    // 上读锁
+    ReaderLockRAII locker(Message::lock);
+    for(auto it: Message::group[group_])
+        // 添加用户相关分组服务器信息；
+        HttpMessage::userServer[Message_->UserName][it] =
+            Message::storageNode.find(it)->second->Status;
 }
+

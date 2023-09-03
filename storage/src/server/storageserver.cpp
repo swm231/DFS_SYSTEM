@@ -41,11 +41,11 @@ void StorageServer::StartUp(){
         for(int i = 0; i < eventCnt; i++){
             uint32_t event = events[i].events;
             if(event & EPOLLIN)
-                DealRead_(static_cast<FdNode*>(events[i].data.ptr));
+                DealRead_(static_cast<BaseNode*>(events[i].data.ptr));
             else if(event & EPOLLOUT)
-                DealWrite_(static_cast<FdNode*>(events[i].data.ptr));
+                DealWrite_(static_cast<BaseNode*>(events[i].data.ptr));
             else if(event & (EPOLLRDHUP | EPOLLHUP | EPOLLERR))
-                DealClose_(static_cast<FdNode*>(events[i].data.ptr));
+                DealClose_(static_cast<BaseNode*>(events[i].data.ptr));
             else
                 LOG_ERROR("[epoll] Unexpected Event!");
         }
@@ -56,13 +56,13 @@ void StorageServer::CloseServer(int signum){
     StorageServer::stop_ = true;
 }
 
-void StorageServer::DealRead_(FdNode *ptr){
+void StorageServer::DealRead_(BaseNode *ptr){
     ThreadPool::Instance().AddTask(std::bind(&StorageServer::OnRead_, this, ptr));
 }
-void StorageServer::DealWrite_(FdNode *ptr){
+void StorageServer::DealWrite_(BaseNode *ptr){
     ThreadPool::Instance().AddTask(std::bind(&StorageServer::OnWrite_, this, ptr));
 }
-void StorageServer::OnRead_(FdNode *ptr){
+void StorageServer::OnRead_(BaseNode *ptr){
     int ret = ptr->ReadProcess();
     if(ret == 0)
         Epoll::Instance().modFd(ptr->fd, ptr, Epoll::connEvent_ | EPOLLOUT);
@@ -71,7 +71,7 @@ void StorageServer::OnRead_(FdNode *ptr){
     else if(ret == 2)
         DealClose_(ptr);
 }
-void StorageServer::OnWrite_(FdNode *ptr){
+void StorageServer::OnWrite_(BaseNode *ptr){
     int ret = ptr->WriteProcess();
     if(ret == 0)
         Epoll::Instance().modFd(ptr->fd, ptr, Epoll::connEvent_ | EPOLLIN);
@@ -80,7 +80,7 @@ void StorageServer::OnWrite_(FdNode *ptr){
     else if(ret == 2)
         DealClose_(ptr);
 }
-void StorageServer::DealClose_(FdNode *ptr){
+void StorageServer::DealClose_(BaseNode *ptr){
     Epoll::Instance().delFd(ptr->fd);
     delete ptr;
 }
@@ -105,7 +105,7 @@ void StorageServer::Connect_(){
 
         Epoll::Instance().addFd(Conf::Instance().tracker[i]->fd, Conf::Instance().tracker[i], Epoll::connEvent_);
 
-        Conf::Instance().tracker[i]->ReadyTraNEW();
+        Conf::Instance().tracker[i]->ReadyNEW();
         Epoll::Instance().modFd(Conf::Instance().tracker[i]->fd, Conf::Instance().tracker[i], Epoll::connEvent_ | EPOLLOUT);
     }
 }

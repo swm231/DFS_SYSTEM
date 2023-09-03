@@ -9,9 +9,9 @@
 #include <sys/sendfile.h>
 #include <unistd.h>
 
-#include "../message/tracker.h"
 #include "../single/epoll.h"
 #include "../resources/html.h"
+#include "httpmessage.h"
 
 class HttpResponse : public Response {
 public:
@@ -36,9 +36,9 @@ private:
     void GetPriFileVec_(std::vector<std::string> &fileList);
     void GetHtmlPage_();
 
-    void HeaderAddPubAddr_();
-    void HeaderAddPriAddr_();
-    void HeaderAddAddr_(const std::string &groupName);
+    uint16_t HeaderAddPubAddr_();
+    uint16_t HeaderAddPriAddr_();
+    void HeaderAddAddr_(StorageNode *ptr);
 
     struct stat fileSata_;
     int fileMsgFd;

@@ -235,6 +235,7 @@ void HttpRequest::Verify(){
             if(encipher::getMD5(row[0], 4) == Message_->UserName){
                 Message_->UserName = row[0];
                 LoginStatus_ = 0;
+                Message_->Groupname = ConsistentHash::Instance().GetGroup(Message_->UserName);
                 Message_->isSetCookie = true;
                 return;
             }
@@ -302,6 +303,7 @@ void HttpRequest::Login_(){
     LoginStatus_ = 0;
     Message_->isSetCookie = true;
     Message_->Path = PATH::WELCOME;
+    Message_->Groupname = ConsistentHash::Instance().GetGroup(Message_->UserName);
     AddCookie_();
 }
 

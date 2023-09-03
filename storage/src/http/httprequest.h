@@ -6,7 +6,8 @@
 #include <cstring>
 #include <regex>
 
-#include "../message/storage.h"
+#include "httpmessage.h"
+#include "../message/enumstatus.h"
 #include "../pool/sqlconnraii.h"
 
 class HttpRequest : public Request{

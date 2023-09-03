@@ -43,7 +43,9 @@
             <td style=\"text-align: center;\">文件名</td> <td></td> <td></td>\n\
         </thead>"
 
-#define _public "<div style=\"text-align: center\">\n\
+#define _public "        <div id=\"div1\" style=\"width: 100%; height: 100%; display: none;text-align: center; background-color: #8b8b8b; opacity: 0.5;\" ></div> \n\
+        <div id=\"div2\" style=\"width: 200px; height: 30px; text-align: center; display: none; padding: 30px 30px; font-size: large; opacity: 1; background-color:#ffffff; border-radius: 20px; border: 1px solid #5e5c5c4b;\">正在上传文件...</div> \n\
+        <div style=\"text-align: center\">\n\
     <br>        公共空间    <br/>\n\
 </div><div style=\"text-align: center\">\n\
     <br>\n\
@@ -124,32 +126,54 @@
             function confirmDelete() {\n\
                 return confirm('确认删除该文件吗？');\n\
             }\n\
-            async function getServer_file() {\n\
-                try {\n\
-                    const response = await fetch('/get_public_server');\n\
-                    if (response.ok) {\n\
-                        const fileInput = document.getElementById('upload');\n\
-                        const file = fileInput.files[0];\n\
-                        return { response, file };\n\
-                    }\n\
+            function uploadWin(){\n\
+                var vDiv = document.getElementById('div1');\n\
+                vDiv.style.display = 'block';\n\
+                vDiv.style.zIndex = 10;\n\
+                vDiv.style.position = \"absolute\";\n\
+                var vDiv2 = document.getElementById('div2');\n\
+                vDiv2.style.display = 'block';\n\
+                vDiv2.style.zIndex = 11;\n\
+                vDiv2.style.position = \"fixed\";\n\
+                vDiv2.style.top = \"20%\";\n\
+                vDiv2.style.left = \"50%\";\n\
+                vDiv2.style.marginLeft = \"-111px\";\n\
+                vDiv2.style.marginTop = \"-20px\";\n\
+            }\n\
+            async function postServer_file() {\n\
+                const response = await fetch('/get_public_server',{\n\
+                    method: 'POST' \n\
+                });\n\
+                if (response.ok) {\n\
+                    const fileInput = document.getElementById('upload');\n\
+                    const file = fileInput.files[0];\n\
+                    return { response, file };\n\
                 }\n\
-                catch (error) {\n\
-                    console.error(\"Error in UpLoad:\", error);\n\
+            }\n\
+            async function postServer() {\n\
+                const response = await fetch('/get_public_server', {\n\
+                    method: 'POST' \n\
+                });\n\
+                if (response.ok) {\n\
+                    return response;\n\
                 }\n\
             }\n\
             async function getServer() {\n\
-                try {\n\
-                    const response = await fetch('/get_public_server');\n\
-                    if (response.ok) {\n\
-                        return response;\n\
-                    }\n\
-                }\n\
-                catch (error) {\n\
-                    console.error(\"Error in UpLoad:\", error);\n\
+                const response = await fetch('/get_public_server', {\n\
+                    method: 'GET' \n\
+                });\n\
+                if (response.ok) {\n\
+                    return response;\n\
                 }\n\
             }\n\
+            function closeWin() {\n\
+                var vDiv1 = document.getElementById('div1');\n\
+                var vDiv2 = document.getElementById('div2');\n\
+                vDiv1.style.display = 'none';\n\
+                vDiv2.style.display = 'none';\n\
+            }\n\
             async function UpLoad(){\n\
-                const { response, file } = await getServer_file();\n\
+                const { response, file } = await postServer_file();\n\
                 const uploadServer = await response.text() + \"/public/upload/\" + file.name;\n\
                 const formData = new FormData();\n\
                 formData.append('upload', file);\n\
@@ -157,6 +181,7 @@
                     method: 'POST',\n\
                     body: formData\n\
                 });\n\
+                closeWin();\n\
             }\n\
             async function DownLoad(filename){\n\
                 const response = await getServer();\n\
@@ -172,7 +197,7 @@
             async function Delete(filename){\n\
                 if(!confirmDelete())\n\
                     return;\n\
-                const response = await getServer();\n\
+                const response = await postServer();\n\
                 const uploadServer = await response.text() + \"/public/delete/\" + filename;\n\
                 await fetch(uploadServer, {\n\
                     method: 'DELETE'\n\
@@ -185,51 +210,62 @@
             function confirmDelete() {\n\
                 return confirm('确认删除该文件吗？');\n\
             }\n\
-            async function getServer_file() {\n\
-                try {\n\
-                    const response = await fetch('/get_private_server');\n\
-                    if (response.ok) {\n\
-                        const fileInput = document.getElementById('upload');\n\
-                        const file = fileInput.files[0];\n\
-                        return { response, file };\n\
-                    }\n\
+            function uploadWin(){\n\
+                var vDiv = document.getElementById('div1');\n\
+                vDiv.style.display = 'block';\n\
+                vDiv.style.zIndex = 10;\n\
+                vDiv.style.position = \"absolute\";\n\
+                var vDiv2 = document.getElementById('div2');\n\
+                vDiv2.style.display = 'block';\n\
+                vDiv2.style.zIndex = 11;\n\
+                vDiv2.style.position = \"fixed\";\n\
+                vDiv2.style.top = \"20%\";\n\
+                vDiv2.style.left = \"50%\";\n\
+                vDiv2.style.marginLeft = \"-111px\";\n\
+                vDiv2.style.marginTop = \"-20px\";\n\
+            }\n\
+            async function postServer_file() {\n\
+                const response = await fetch('/get_private_server',{\n\
+                    method: 'POST' \n\
+                });\n\
+                if (response.ok) {\n\
+                    const fileInput = document.getElementById('upload');\n\
+                    const file = fileInput.files[0];\n\
+                    return { response, file };\n\
                 }\n\
-                catch (error) {\n\
-                    console.error(\"Error in UpLoad:\", error);\n\
+            }\n\
+            async function postServer() {\n\
+                const response = await fetch('/get_private_server',{\n\
+                    method: 'POST' \n\
+                });\n\
+                if (response.ok) {\n\
+                    return response;\n\
                 }\n\
             }\n\
             async function getServer() {\n\
-                try {\n\
-                    const response = await fetch('/get_private_server');\n\
-                    if (response.ok) {\n\
-                        return response;\n\
-                    }\n\
-                }\n\
-                catch (error) {\n\
-                    console.error(\"Error in UpLoad:\", error);\n\
+                const response = await fetch('/get_private_server',{\n\
+                    method: 'GET' \n\
+                });\n\
+                if (response.ok) {\n\
+                    return response;\n\
                 }\n\
             }\n\
+            function closeWin() {\n\
+                var vDiv1 = document.getElementById('div1');\n\
+                var vDiv2 = document.getElementById('div2');\n\
+                vDiv1.style.display = 'none';\n\
+                vDiv2.style.display = 'none';\n\
+            }\n\
             async function UpLoad(){\n\
-                const { response, file } = await getServer_file();\n\
+                const { response, file } = await postServer_file();\n\
                 const uploadServer = await response.text() + \"/private/upload/\" + file.name;\n\
                 const formData = new FormData();\n\
                 formData.append('upload', file);\n\
-                const xhr = new XMLHttpRequest();\n\
-                xhr.upload.addEventListener(\"progress\", (event) => {\n\
-                    if (event.lengthComputable) {\n\
-                        const percentComplete = (event.loaded / event.total) * 100;\n\
-                        console.log(`Upload Progress: ${percentComplete.toFixed(2)}%`);\n\
-                    }\n\
+                await fetch(uploadServer, {\n\
+                    method: 'POST',\n\
+                    body: formData\n\
                 });\n\
-                xhr.open(\"POST\", uploadServer, true);\n\
-                xhr.onload = () => {\n\
-                    if (xhr.status === 200) {\n\
-                        console.log(\"Upload complete!\");\n\
-                    } else {\n\
-                        console.error(\"Upload failed\");\n\
-                    }\n\
-                };\n\
-                xhr.send(formData);\n\
+                closeWin();\n\
             }\n\
             async function DownLoad(filename){\n\
                 const response = await getServer();\n\
@@ -245,7 +281,7 @@
             async function Delete(filename){\n\
                 if(!confirmDelete())\n\
                     return;\n\
-                const response = await getServer();\n\
+                const response = await postServer();\n\
                 const uploadServer = await response.text() + \"/private/delete/\" + filename;\n\
                 await fetch(uploadServer, {\n\
                     method: 'DELETE'\n\

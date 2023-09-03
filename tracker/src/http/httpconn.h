@@ -7,7 +7,7 @@
 #include "httprequest.h"
 #include "httpresponse.h"
 
-class HttpConn: public FdNode{
+class HttpConn: public BaseNode{
 public:
     HttpConn();
     ~HttpConn();
@@ -19,11 +19,9 @@ public:
     int ReadProcess();
     int WriteProcess();
 
-    int GetFd() const;
+    void addUserServer();
 
     static std::atomic<int> userCount;
-    static std::string srcDir_;
-
 private:
     struct sockaddr_in addr_;
 

@@ -6,7 +6,7 @@
 
 #include "../log/log.h"
 
-class FdNode;
+class BaseNode;
 class Epoll{
 public:
     static Epoll &Instance(){
@@ -14,8 +14,8 @@ public:
         return instance;
     }
 
-    int addFd(int fd, FdNode *ptr, uint32_t events);
-    int modFd(int fd, FdNode *ptr, uint32_t events);
+    int addFd(int fd, BaseNode *ptr, uint32_t events);
+    int modFd(int fd, BaseNode *ptr, uint32_t events);
     int delFd(int fd);
     
     int GetFd() const{

@@ -6,8 +6,8 @@
 #include <cstring>
 #include <regex>
 
-#include "../message/tracker.h"
 #include "../pool/sqlconnraii.h"
+#include "httpmessage.h"
 
 class HttpRequest : public Request{
 public:
@@ -25,6 +25,9 @@ public:
     void Append(const char *str, size_t len);
 
     bool IsKeepAlice() const;
+    int GetLogStatus(){
+        return LoginStatus_;
+    }
 
 private:
     void ParseQuestLine_();

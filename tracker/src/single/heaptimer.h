@@ -37,6 +37,7 @@ public:
     void update(int id, int timeout);
 
     void close(int id);
+    void erase(int id);
 
     void clear();
 

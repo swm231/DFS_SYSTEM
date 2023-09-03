@@ -9,7 +9,8 @@
 #include <sys/sendfile.h>
 #include <unistd.h>
 
-#include "../message/storage.h"
+#include "httpmessage.h"
+#include "../message/enumstatus.h"
 #include "../single/epoll.h"
 
 class HttpResponse : public Response {

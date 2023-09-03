@@ -1,0 +1,60 @@
+#pragma once
+
+// 表示信息处理状态
+enum MSGSTATUS{
+    HANDLE_INIT,
+    HANDLE_HEAD,
+    HANDLE_BODY,
+    HANDLE_COMPLATE,
+    HANDLE_ERROR,
+};
+
+
+// 表示消息体类型
+enum MSGBODYTYPE{
+    FILE_TYPE,
+    TEXT_TYPE,
+    EMPTY_TYPE,
+};
+
+enum METHOD{
+    GET,
+    POST,
+    METHOD_OTHER,
+};
+
+enum PATH{
+    ROOT,
+    PUBLIC,
+    PRIVATE,
+    LOGIN,
+    REGISTER,
+    LOGOUT,
+    WELCOME,
+    NAMERR,
+    PWDERR,
+    PUBLIC_SERVER,
+    PRIVATE_SREVER,
+    PATH_OTHER
+};
+
+enum BEHAVIOR{
+    UPLOAD,
+    DOWNLOAD,
+    DELETE,
+    BEHAVIOR_OTHER,
+};
+
+enum VERSION{ 
+    _0_9,
+    _1_0,
+    _1_1,
+    _2_0,
+    VERSION_OTHER,
+};
+
+enum HTML_ENUM{
+    _404_, _403_, _400_, _HEAD, _HEAD_, _INDEX, _LOGIN, _LOGOUT, _NAMERR,
+    _PWDERR, _PUBLIC, _PRIVATE, _REGISTER, _TITLE, _WELCOME, _LISTEND,
+    _HTMLEND, _JSEND, _PUBLICJS, _PRIVATEJS
+};

@@ -5,7 +5,7 @@ Epoll::Epoll(int maxEvent) : epfd_(epoll_create(maxEvent)) {}
 
 Epoll::~Epoll() {}
 
-int Epoll::addFd(int fd, FdNode *ptr, uint32_t events){
+int Epoll::addFd(int fd, BaseNode *ptr, uint32_t events){
     epoll_event event;
     bzero(&event, sizeof event);
     event.data.ptr = ptr;
@@ -17,7 +17,7 @@ int Epoll::addFd(int fd, FdNode *ptr, uint32_t events){
     return 0;
 }
 
-int Epoll::modFd(int fd, FdNode *ptr, uint32_t events){
+int Epoll::modFd(int fd, BaseNode *ptr, uint32_t events){
     epoll_event event = {0};
     event.data.ptr = ptr;
     event.events = events;

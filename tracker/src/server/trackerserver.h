@@ -8,7 +8,6 @@
 #include "../single/epoll.h"
 #include "../http/httpconn.h"
 #include "../pool/threadpool.h"
-#include "../single/heaptimer.h"
 
 class StorageMess;
 class HttpConn;
@@ -22,12 +21,12 @@ public:
 
 private:
 
-    void DealRead_(FdNode*);
-    void DealWrite_(FdNode*);
+    void DealRead_(BaseNode*);
+    void DealWrite_(BaseNode*);
 
-    void OnRead_(FdNode*);
-    void OnWrite_(FdNode*);
-    void DealClose_(FdNode*);
+    void OnRead_(BaseNode*);
+    void OnWrite_(BaseNode*);
+    void DealClose_(BaseNode*);
 
     bool stop_;
 

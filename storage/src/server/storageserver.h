@@ -5,7 +5,7 @@
 #include <signal.h>
 
 #include "../http/httpconn.h"
-
+#include "../pool/threadpool.h"
 
 class StorageServer{
 public:
@@ -21,11 +21,11 @@ private:
 
     void Connect_();
 
-    void DealRead_(FdNode*);
-    void DealWrite_(FdNode*);
-    void OnRead_(FdNode*);
-    void OnWrite_(FdNode*);
-    void DealClose_(FdNode*);
+    void DealRead_(BaseNode*);
+    void DealWrite_(BaseNode*);
+    void OnRead_(BaseNode*);
+    void OnWrite_(BaseNode*);
+    void DealClose_(BaseNode*);
 
     void KeepThrob_();
 

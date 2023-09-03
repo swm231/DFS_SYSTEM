@@ -126,10 +126,6 @@ void HttpResponse::AddHeader_(){
         if(Message_->Path == PATH::PRIVATE)
             beforeBodyMsg.Append("Location: /private\r\n");
     }
-    // if(Message_->Path == PATH::PUBLIC)
-    //     HeaderAddPubAddr_();
-    // if(Message_->Path == PATH::PRIVATE)
-    //     HeaderAddPriAddr_();
     if(Message_->isSetCookie)
     {
         if(Message_->Path == PATH::LOGOUT)
@@ -140,13 +136,26 @@ void HttpResponse::AddHeader_(){
 }
 void HttpResponse::AddContent_(){
     // body
-    // printf("%d\n", Message_->Path);
     if(Message_->Path == PATH::PUBLIC_SERVER || Message_->Path == PATH::PRIVATE_SREVER){
-        // beforeBodyMsg.Append("Content-length: " + std::to_string(fileSata_.st_size) + "\r\n\r\n");
-        if(Message_->Path == PATH::PUBLIC_SERVER)
-            HeaderAddPubAddr_();
-        else
-            HeaderAddPriAddr_();
+        uint16_t respondFD;
+        if(Message_->Path == PATH::PUBLIC_SERVER){
+            respondFD = HeaderAddPubAddr_();
+            if(respondFD != 0){
+                Message::synPULGroup();
+                Message::storageNode[respondFD]->Status = STORAGE_STATUS_ACTIVE;
+            }
+        }
+        else{
+            respondFD = HeaderAddPriAddr_();
+            if(respondFD != 0){
+                HttpMessage::synPRIGroup(Message_->UserName);
+                {
+                    ReaderLockRAII lcoker(Message::lock);
+                    HttpMessage::userServer[Message_->UserName][respondFD] = STORAGE_STATUS_ACTIVE;
+                    Message::changeFLAG();
+                }
+            }
+        }
         beforeBodyMsg.Append("Content-length: " + std::to_string(BodyMsg.UnHandleBytes()) + "\r\n\r\n");
         return;
     }
@@ -163,32 +172,39 @@ void HttpResponse::AddContent_(){
 std::string HttpResponse::GetFileType_(){
     return "text/html";
 }
-void HttpResponse::HeaderAddPubAddr_(){
-    HeaderAddAddr_("public");
+uint16_t HttpResponse::HeaderAddPubAddr_(){
+    ReaderLockRAII(Message::lock);
+    if(Message::group["public"].size() == 0)
+        return 0;
+    for(auto it: Message::group["public"])
+        if(Message::storageNode[it]->Status == STORAGE_STATUS_ACTIVE){
+            HeaderAddAddr_(Message::storageNode[it]);
+            return Message::storageNode[it]->fd;
+        }
+    return 0;
 }
-void HttpResponse::HeaderAddPriAddr_(){
-    std::string groupName = ConsistentHash::Instance().GetGroup(Message_->UserName);
-    HeaderAddAddr_(groupName);
+uint16_t HttpResponse::HeaderAddPriAddr_(){
+    ReaderLockRAII(Message::lock);
+    if(Message::flag)
+        Message_->updateServer();
+    if(Message::group[Message_->UserName].size() == 0)
+        return 0;
+    for(auto it: Message::group[Message_->UserName])
+        if(Message::storageNode[it]->status == STORAGE_STATUS_ACTIVE){
+            HeaderAddAddr_(Message::storageNode[it]);
+            return Message::storageNode[it]->fd;
+        }
+    return 0;
 }
-void HttpResponse::HeaderAddAddr_(const std::string &groupName){
-    // TODO 一致性哈希
-    if(Message::group[groupName].size() == 0)
-        return;
-    int rd = rand() % Message::group[groupName].size(), j = 0;
+void HttpResponse::HeaderAddAddr_(StorageNode *ptr){
     struct in_addr addr;
     char str[INET_ADDRSTRLEN] = {0};
-    for(auto it : Message::group[groupName]){
-        if(j == rd){
-            BodyMsg.Append("http://");
-            addr.s_addr = htonl(Message::storageNode[it]->ip);
-            inet_ntop(AF_INET, &addr, str, INET_ADDRSTRLEN);
-            BodyMsg.Append(str);
-            BodyMsg.Append(":");
-            BodyMsg.Append(std::to_string(Message::storageNode[it]->HttpPort));
-            break;
-        }
-        j++;
-    }
+    BodyMsg.Append("http://");
+    addr.s_addr = htonl(ptr->ip);
+    inet_ntop(AF_INET, &addr, str, INET_ADDRSTRLEN);
+    BodyMsg.Append(str);
+    BodyMsg.Append(":");
+    BodyMsg.Append(std::to_string(ptr->HttpPort));
 }
 
 void HttpResponse::GetHtmlPage_(){
