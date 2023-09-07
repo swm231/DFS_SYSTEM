@@ -8,6 +8,8 @@ HttpConn::HttpConn() : addr_({0}), isClose_(true), Message_(new HttpMessage()),
     request_(Message_), response_(Message_){}
 HttpConn::~HttpConn(){
     Close();
+    // 当客户端连接意外断开时，回滚事务
+    Message_->rollbacklog.RollbackOrder();
     delete Message_;
 }
 
@@ -41,7 +43,12 @@ bool HttpConn::isClose(){
 int HttpConn::ReadProcess(){
     int ret = request_.process();
     if(ret == 0){
+        // 记录同步日志
+        UpdateLog_();
+
+        // 逻辑一致性
         UpdateSql_();
+
         response_.Init();
     }
     else
@@ -88,12 +95,27 @@ void HttpConn::UpdateSql_(){
     if(mysql_query(sql, order))
         LOG_ERROR("[sql] updatesql error");
 
-    UpdateGroup_();
 }
 
-void HttpConn::UpdateGroup_(){
+void HttpConn::UpdateLog_(){
+    if(Message_->Behavior == BEHAVIOR::DOWNLOAD || Message_->Behavior == BEHAVIOR::BEHAVIOR_OTHER)
+        return;
+    synLogBody synBody;
     for(auto it: StorageNode::group){
-        it.second->ReadySYN(Message_->Behavior, Message_->Path, Message_->UserName, Message_->FileName);
+        // 获得 synlog id(offest)
+        uint64_t synLogId = SynLog::Instance().GetPageIdx();
+        SynLog::Instance().MakeLog(&synBody, it.second->ip, Message_->Behavior == BEHAVIOR::UPLOAD,
+                (Message_->Path == PATH::PUBLIC) ? "" : Message_->UserName, Message_->FileName);
+
+        // 记录 ringlog 过程中就进行同步准备
+        uint64_t ringLogId = RingLog::Instance().WriteSynLog(synBody);
+
+        // 节点加入任务进行同步， 任务id为两份日志
+        it.second->AddTask(synPack(ringLogId, synLogId, (Message_->Path == PATH::PUBLIC) ? "" : Message_->UserName, 
+            Message_->FileName, Message_->Behavior == BEHAVIOR::UPLOAD));
         Epoll::Instance().modFd(it.second->fd, it.second, Epoll::connEvent_ | EPOLLOUT);
     }
+    // 恢复 ringlogAddr_Rollback
+    RingLog::Instance().FreeLog(Message_->ringlogAddr_Rollback);
+    Message_->rollbacklog.ClearOrder();
 }

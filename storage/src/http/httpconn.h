@@ -26,7 +26,7 @@ public:
 
 private:
     void UpdateSql_();
-    void UpdateGroup_();
+    void UpdateLog_();
 
     struct sockaddr_in addr_;
 

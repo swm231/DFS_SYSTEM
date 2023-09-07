@@ -16,7 +16,7 @@ public:
 
     uint32_t bind_addr;
     uint16_t http_port, task_port;
-    uint32_t data_capacity, data_used;
+    uint32_t data_capacity, data_used, ring_log_capacity;
     std::string group_name, data_path;
     std::string mysql_host, mysql_user, mysql_pwd, mysql_database;
     std::vector<TrackerNode*> tracker;
@@ -91,14 +91,12 @@ public:
             LOG_ERROR("[config] getFileSize error");
             return false;
         }
-        // mkdir((data_path + "/" + group_name).c_str(), 777);
-        // if(fp = std::fopen((data_path + "/" + group_name + "/.version").c_str(), "r+"))
-        //     std::fscanf(fp, "%d", &version);
-        // else{
-        //     fp = std::fopen((data_path + "/" + group_name + "/.version").c_str(), "w");
-        //     std::fprintf(fp, "0");
-        //     version = 0;
-        // }
+
+        // ring_log_capacity
+        if(cfg.lookupValue("ring_log_capacity", ring_log_capacity) == false){
+            LOG_ERROR("[config] ring_log_capacity error");
+            return false;
+        }
 
         // tracker_server
         for(int i = 0; ; i ++){

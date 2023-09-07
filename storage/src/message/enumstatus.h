@@ -1,5 +1,7 @@
 #pragma once
 
+typedef std::pair<uint64_t, uint64_t> Stortask;
+
 // 表示信息处理状态
 enum MSGSTATUS{
     HANDLE_INIT,
@@ -47,4 +49,59 @@ enum VERSION{
 enum HTML_ENUM{
     _404_, _403_, _400_, _HEAD, _HEAD_, _INDEX, _LOGIN, _LOGOUT, _NAMERR,
      _PWDERR, _PUBLIC, _PRIVATE, _REGISTER, _TITLE, _WELCOME, _LISTEND 
+};
+
+enum STORTASKTYPE{
+    NEW,
+    SYN
+};
+
+struct synPack{
+    synPack(uint64_t _ringLogId, uint64_t _synLogId, const std::string &_username,
+        const std::string &_filename, bool _isUpload):ringLogId(_ringLogId),
+        synLogId(_synLogId), username(_username), filename(_filename), isUpload(_isUpload){}
+    uint64_t ringLogId, synLogId;
+    std::string username, filename;
+    bool isUpload;
+};
+
+struct storTaskPack{
+    storTaskPack(){}
+    storTaskPack(STORTASKTYPE _type, uint16_t _port):type(_type), port(_port){}
+    storTaskPack(STORTASKTYPE _type, synPack _synpack):type(_type), synpack(_synpack){}
+    storTaskPack(const storTaskPack& pack): type(pack.type){
+        switch (type)
+        {
+        case STORTASKTYPE::NEW:
+            port = pack.port;
+            break;
+        case STORTASKTYPE::SYN:
+            synpack = pack.synpack;
+            break;
+        default:
+            break;
+        }
+    }
+    storTaskPack operator=(const storTaskPack &pack){
+        type = pack.type;
+        switch (type)
+        {
+        case STORTASKTYPE::NEW:
+            port = pack.port;
+            break;
+        case STORTASKTYPE::SYN:
+            synpack = pack.synpack;
+            break;
+        default:
+            break;
+        }
+        return *this;
+    }
+    ~storTaskPack(){}
+
+    STORTASKTYPE type;
+    union{
+        struct synPack synpack;
+        uint16_t port;
+    };
 };

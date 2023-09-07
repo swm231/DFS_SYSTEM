@@ -88,10 +88,15 @@ void TaskNode::ParseBody_(){
     }
 
     if(fileStatus == FILEMSGESTATUS::FILE_COMPLATE){
+        // 读取文件尾标志
         recvBuff.AddHandled(boundary.size() + 6);
         status = MSGSTATUS::HANDLE_COMPLATE;
+        // 发送同步完成
         SyncTracker::SyncUser(username_);
-        recvBuff.AddHandledAll();
+        // recvBuff.AddHandledAll();
+        // 更新日志
+        RingLog::Instance().FreeLog(ringlogAddr_Rollback);
+        rollbacklog.ClearOrder();
         Close();
         LOG_INFO("[task] 文件处理完成");
         return;
@@ -146,10 +151,14 @@ void TaskNode::DealUPL_(const char *lineEnd){
     stream >> path >> username >> filename >> BodyLen_ >> boundary;
     username_ = username;
     std::string filePath;
+    // 设置路径，同时设置日志
     if(path == "pub")
-        filePath = Conf::Instance().data_path + "/public/" + filename;
+        filePath = Conf::Instance().data_path + "/public/" + filename,
+        rollbacklog.MakeOrder(true, "", filename);
     else if(path == "pri")
-        filePath = Conf::Instance().data_path + "/private/" + username + "/" + filename;
+        filePath = Conf::Instance().data_path + "/private/" + username + "/" + filename,
+        rollbacklog.MakeOrder(true, username, filename);
+    ringlogAddr_Rollback = RingLog::Instance().WriteRollbackLog(rollbacklog);
     fp = fopen(filePath.c_str(), "wb");
     status = MSGSTATUS::HANDLE_BODY;
 

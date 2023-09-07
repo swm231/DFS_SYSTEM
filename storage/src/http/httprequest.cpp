@@ -49,6 +49,13 @@ int HttpRequest::process(){
         if(LoginStatus_ == -1)
             Verify();
 
+        // 记录日志
+        if(Message_->Behavior == BEHAVIOR::UPLOAD || Message_->Behavior == BEHAVIOR::DELETE){
+            Message_->rollbacklog.MakeOrder(Message_->Behavior == BEHAVIOR::UPLOAD,
+                (Message_->Path == PATH::PUBLIC) ? "" : Message_->UserName, Message_->FileName);
+            Message_->ringlogAddr_Rollback = RingLog::Instance().WriteRollbackLog(Message_->rollbacklog);
+        }
+
         // 消息体
         if(HeadStatus == HANDLE_BODY){
             if(Message_->Method != METHOD::POST){
@@ -131,10 +138,6 @@ void HttpRequest::ParseQuestLine_(){
         Message_->Behavior = BEHAVIOR::BEHAVIOR_OTHER;
 
     Message_->FileName = Resource.substr(en_pos + 1);
-    // if(Message_->Behavior == BEHAVIOR::DOWNLOAD)
-    //     Message_->code = 200;
-    // else
-    //     Message_->code = 302;
     Message_->code = 200;
 }
 

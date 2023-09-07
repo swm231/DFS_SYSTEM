@@ -85,4 +85,9 @@ public:
     static std::unordered_set<std::string> onlieUser;
     // 用户名为first 键值
     static std::unordered_map<std::string, std::unordered_map<int, int> > userServer;
+
+    static void synPRIGroup(const std::string &username){
+        for(auto it:userServer[username])
+            it.second = STORAGE_PACK_SYN;
+    }
 };

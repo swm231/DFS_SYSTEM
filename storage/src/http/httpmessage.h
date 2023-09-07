@@ -7,6 +7,9 @@
 #include "../message/node.h"
 #include "../message/config.h"
 #include "../single/encipher.h"
+#include "../consistlog/rollbacklog/rollbacklog.h"
+#include "../consistlog/ringlog/ringlog.h"
+#include "../consistlog/synlog/synlog.h"
 
 class Request{
 public:
@@ -35,7 +38,8 @@ public:
     int fd_;
     int SaveErrno;
 
-    HttpMessage(){}
+    HttpMessage():ringlogAddr_Rollback(0u){}
+    ~HttpMessage(){}
     void Init(){
         Method = METHOD::METHOD_OTHER, Path = PATH::PATH_OTHER, 
         Behavior = BEHAVIOR::BEHAVIOR_OTHER, Version = VERSION::VERSION_OTHER;
@@ -56,6 +60,10 @@ public:
     std::string UserName, PassWord;
     std::string FileName;
     std::string Cookie;
+
+    // log
+    RollbackLog rollbacklog;
+    uint64_t ringlogAddr_Rollback;
 
     std::unordered_map<std::string, std::string> MsgHeader;
     

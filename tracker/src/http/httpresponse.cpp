@@ -149,6 +149,7 @@ void HttpResponse::AddContent_(){
             respondFD = HeaderAddPriAddr_();
             if(respondFD != 0){
                 HttpMessage::synPRIGroup(Message_->UserName);
+                // 更新该用户同组信息
                 {
                     ReaderLockRAII lcoker(Message::lock);
                     HttpMessage::userServer[Message_->UserName][respondFD] = STORAGE_STATUS_ACTIVE;

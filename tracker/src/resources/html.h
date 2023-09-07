@@ -24,7 +24,9 @@
 
 #define _pwderr "<div style=\"text-align: center;\">    <p id=\"welcome\">        密码错误!    </p></div></body></html>"
 
-#define _private "<div style=\"text-align: center\">\n\
+#define _private "        <div id=\"div1\" style=\"width: 100%; height: 100%; display: none;text-align: center; background-color: #8b8b8b; opacity: 0.5;\" ></div> \n\
+        <div id=\"div2\" style=\"width: 200px; height: 30px; text-align: center; display: none; padding: 30px 30px; font-size: large; opacity: 1; background-color:#ffffff; border-radius: 20px; border: 1px solid #5e5c5c4b;\">正在上传文件...</div> \n\
+        <div style=\"text-align: center\">\n\
     <br>        私人空间    <br/>\n\
 </div><div style=\"text-align: center\">\n\
     <br>\n\
@@ -32,7 +34,7 @@
     <br/>\n\
     <form id=\"uploadfile\" action=\"\" method=\"post\" enctype=\"multipart/form-data\" style=\"text-align: center;\">\n\
         <input type=\"file\" id=\"upload\" name=\"upload\" style=\"border:1px solid;\"/>\n\
-        <input onclick=\"requestUploadServer();\" value=\"请求 Upload-Server\">\n\
+        <input id=\"uploadButton\" type=\"button\" onclick=\"UpLoad();\" value=\"上传\">\n\
     </form>\n\
 </div><div style=\"text-align: center\">\n\
     <br>\n\

@@ -4,11 +4,13 @@
 #include <fcntl.h>
 #include <sys/sendfile.h>
 #include <algorithm>
+#include <queue>
 
 #include "basenode.h"
 #include "../single/encipher.h"
 #include "../log/log.h"
 #include "../single/epoll.h"
+#include "../consistlog/rollbacklog/rollbacklog.h"
 
 
 class TaskNode: public BaseNode{
@@ -30,6 +32,8 @@ private:
     std::string username_;
     long long hasSaveLen_, BodyLen_;
     FILE *fp;
+    RollbackLog rollbacklog;
+    uint64_t ringlogAddr_Rollback;
 };
 
 class TrackerNode : public BaseNode{
@@ -67,14 +71,24 @@ public:
 
     int WriteProcess();
 
-    void ReadyStoNEW();
-    void ReadySYN(BEHAVIOR, PATH, const std::string &username, const std::string &filename);
+    void AddTask(const storTaskPack &task);
+    void AddTask(uint16_t port);
+    void AddTask(const synPack &pack);
 
     static std::unordered_map<int, StorageNode*> group;
 
 private:
+    void ReadyNEW_(const storTaskPack &task);
+    void ReadySyn_(const storTaskPack &task);
+
+    void FinshSyn_(uint64_t ringLogId, uint64_t synLogId);
+    std::function<void()> finshTask;
+
     long long hasSentLen_, BodyLen;
     int fileMsgfd_;
+
+    std::mutex mtx_;
+    std::queue<storTaskPack> taskQue_;
 };
 
 

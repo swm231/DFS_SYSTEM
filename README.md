@@ -35,10 +35,24 @@
   - `http`通信
     - 文件发送使用 sendfile 零拷贝技术
     - 使用 MySQL 保证用户文件逻辑上一致
-    - 组内自动同步保证用户文件物理上一致
+    - 市容日志系统保证用户文件物理上一致
   - `tracker`信息
     - 追踪节点信息在文件 storage.conf 文件中提前配置
     - 可同时配置多台 tracker 节点
+- 数据一致性
+  - `rollback`日志
+    - 回滚日志 & 内存日志
+    - 防止用户意外断连，用于数据回滚
+
+  - `syn`日志
+    - 同步日志 & 磁盘日志
+    - 防止节点意外断连，用于数据恢复
+
+  - `ring`日志
+    - 循环日志 & 磁盘日志
+    - 日志文件大小、每条日志大小固定，采用双链表维护
+    - 保证 `rollbacklog` `synlog` 顺利完成
+
 - 通信
   - ET模式的 `Epoll` 通信
     - epoll_data_t 使用 void* 指针指向 BaseNode 基类
@@ -59,6 +73,12 @@
 ### 整体框架
 
 ![dfs_system](https://github.com/swm231/DFS_SYSTEM/blob/master/img/dfs_system.png)
+
+### 日志系统
+
+#### 流程图
+
+![logflow](https://github.com/swm231/DFS_SYSTEM/blob/master/img/logflow.png)
 
 
 
@@ -159,6 +179,7 @@ storage 端：(在 storage目录中)
 - 缓存机制
   - 对于热点小文件，设置分级缓存
   - 使用有门槛的 LRU 维护热点数据
+  - 对磁盘日志进行缓存
 - 水平扩展
   - 重新计算 哈希环 达到动态水平扩展
 - ...

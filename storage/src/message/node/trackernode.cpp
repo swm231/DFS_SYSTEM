@@ -2,6 +2,8 @@
 #include "../config.h"
 #include "../storagepack.h"
 #include "../syntracker.h"
+#include "../../consistlog/ringlog/ringlog.h"
+#include "../../consistlog/synlog/synlog.h"
 
 TrackerNode::TrackerNode(uint32_t _ip, uint16_t _port, int16_t _fd):BaseNode(_ip, _port, _fd){}
 TrackerNode::TrackerNode(TrackerNode&& other): BaseNode(std::move(other)){}
@@ -88,10 +90,15 @@ void TrackerNode::DealTranew_(){
         StorageNode::group[_fd] = ptr;
         Epoll::Instance().addFd(_fd, ptr, Epoll::connEvent_);
 
-        StorageNode::group[_fd]->ReadyStoNEW();
+        StorageNode::group[_fd]->AddTask(Conf::Instance().task_port);
         Epoll::Instance().modFd(_fd, ptr, Epoll::connEvent_ | EPOLLOUT);
         LOG_INFO("[group] 同组信息:%s %ld", inet_ntoa(addr.sin_addr), _port);
     }
+    SynLog::Instance().Init();
+
+    // ringlog 初始化，检查todoList
+    RingLog::Instance().Init();
+
     // TODO 自动更新
     // if(num == 0){
     //     isOut = true;
